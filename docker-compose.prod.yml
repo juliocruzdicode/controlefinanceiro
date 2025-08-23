@@ -80,9 +80,9 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep -v grep | grep 'python' > /dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pgrep python || exit 1"]
+      interval: 10s
+      timeout: 5s
       retries: 3
     labels:
       - "traefik.enable=true"

@@ -1,24 +1,22 @@
-http:
-  routers:
-    financeiro:
-      rule: "Host(`prosperai.site`)"
-      service: "financeiro"
-      entrypoints:
-        - "websecure"
-      tls:
-        certResolver: "myresolver"
-    
-    catch-all:
-      rule: "HostRegexp(`{host:.+}`)"
-      service: "api@internal"
-      priority: 1
-      entrypoints:
-        - "web"
-        - "websecure"
+# Configuração dinâmica do Traefik
 
-  services:
-    financeiro:
-      loadBalancer:
-        servers:
-          - url: "http://controle_financeiro_app:5005/"
-        passHostHeader: true
+[http]
+  [http.routers]
+    [http.routers.financeiro]
+      rule = "Host(`prosperai.site`)"
+      service = "financeiro"
+      entrypoints = ["websecure"]
+      [http.routers.financeiro.tls]
+        certResolver = "myresolver"
+    
+    [http.routers.financeiro-http]
+      rule = "Host(`prosperai.site`)"
+      service = "financeiro"
+      entrypoints = ["web"]
+
+  [http.services]
+    [http.services.financeiro]
+      [http.services.financeiro.loadBalancer]
+        [[http.services.financeiro.loadBalancer.servers]]
+          url = "http://controle_financeiro_app:5005/"
+        passHostHeader = true
