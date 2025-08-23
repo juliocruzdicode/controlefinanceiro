@@ -27,16 +27,6 @@ except psycopg2.OperationalError as e:
 done
 
 echo "PostgreSQL está pronto!"
-
-# Executar migrações/criação de tabelas se necessário
-echo "Verificando e criando tabelas..."
-python3 -c "
-from app import app, db
-with app.app_context():
-    db.create_all()
-    print('Tabelas criadas/verificadas com sucesso!')
-"
-
 echo "Iniciando aplicação..."
 
 # Iniciar a aplicação com Gunicorn em produção
