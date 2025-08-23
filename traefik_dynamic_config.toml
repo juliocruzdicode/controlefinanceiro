@@ -1,0 +1,24 @@
+http:
+  routers:
+    financeiro:
+      rule: "Host(`prosperai.site`)"
+      service: "financeiro"
+      entrypoints:
+        - "websecure"
+      tls:
+        certResolver: "myresolver"
+    
+    catch-all:
+      rule: "HostRegexp(`{host:.+}`)"
+      service: "api@internal"
+      priority: 1
+      entrypoints:
+        - "web"
+        - "websecure"
+
+  services:
+    financeiro:
+      loadBalancer:
+        servers:
+          - url: "http://controle_financeiro_app:5005/"
+        passHostHeader: true
