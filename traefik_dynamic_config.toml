@@ -19,4 +19,3 @@
       [http.services.financeiro.loadBalancer]
         [[http.services.financeiro.loadBalancer.servers]]
           url = "http://controle_financeiro_app:5005/"
-        passHostHeader = true

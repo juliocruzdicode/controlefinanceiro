@@ -91,13 +91,9 @@ services:
       - "traefik.http.routers.financeiro.entrypoints=websecure"
       - "traefik.http.routers.financeiro.tls.certresolver=myresolver"
       - "traefik.http.services.financeiro.loadbalancer.server.port=5005"
-      # Rota HTTP simples para testes
       - "traefik.http.routers.financeiro-http.rule=Host(`prosperai.site`)"
       - "traefik.http.routers.financeiro-http.entrypoints=web"
       - "traefik.http.routers.financeiro-http.service=financeiro"
-      # Adicione um middleware para verificar os caminhos
-      - "traefik.http.middlewares.strip-prefix.stripprefix.prefixes=/"
-      - "traefik.http.routers.financeiro.middlewares=strip-prefix@docker"
 
   # Nginx (opcional - para produção)
   # Removido o nginx pois o Traefik fará o papel de proxy reverso e SSL
