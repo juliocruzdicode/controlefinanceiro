@@ -1,0 +1,33 @@
+# Crie este arquivo temporário e depois substitua seu Dockerfile atual
+# com estas modificações para garantir que wget seja instalado
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependências do sistema, incluindo wget e curl para healthcheck
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    wget \
+    curl \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar os requisitos e instalar dependências
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar o código da aplicação
+COPY . .
+
+# Diretório para dados persistentes
+RUN mkdir -p /app/instance && chmod 777 /app/instance
+
+# Script de inicialização
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Porta exposta
+EXPOSE 5005
+
+# Comando para iniciar a aplicação
+CMD ["/app/docker-entrypoint.sh"]

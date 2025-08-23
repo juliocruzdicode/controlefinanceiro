@@ -80,7 +80,7 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5005/health"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5005/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -90,6 +90,12 @@ services:
       - "traefik.http.routers.financeiro.entrypoints=websecure"
       - "traefik.http.routers.financeiro.tls.certresolver=myresolver"
       - "traefik.http.services.financeiro.loadbalancer.server.port=5005"
+      # Configuração para HTTP
+      - "traefik.http.routers.financeiro-insecure.rule=Host(`prosperai.site`)"
+      - "traefik.http.routers.financeiro-insecure.entrypoints=web"
+      - "traefik.http.routers.financeiro-insecure.service=financeiro"
+      - "traefik.http.routers.financeiro-insecure.middlewares=redirect-to-https@docker"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
 
   # Nginx (opcional - para produção)
   # Removido o nginx pois o Traefik fará o papel de proxy reverso e SSL
