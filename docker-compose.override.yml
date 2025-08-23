@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  # Sobrescreve as configurações do serviço web apenas para desenvolvimento
+  web:
+    ports:
+      - "3000:5005"
+    labels:
+      - "traefik.enable=false"  # Desabilita o Traefik em ambiente de desenvolvimento
+
+  # Serviço de Traefik para desenvolvimento (opcional)
+  traefik-dev:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      # Self-signed certificates for local development
+      - "--serverstransport.insecureskipverify=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik:/etc/traefik/dynamic"
+    networks:
+      - controle_financeiro_network
+      - app-network
+    profiles:
+      - traefik-dev
