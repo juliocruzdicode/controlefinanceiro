@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Categoria - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-tag me-2"></i>Nova Categoria
+                </h4>
+                <p class="text-muted mb-0 mt-1">Crie categorias organizadas hierarquicamente</p>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.nome.label(class="form-label") }}
+                                {{ form.nome(class="form-control" + (" is-invalid" if form.nome.errors else "")) }}
+                                {% if form.nome.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.nome.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.parent_id.label(class="form-label") }}
+                                {{ form.parent_id(class="form-select" + (" is-invalid" if form.parent_id.errors else "")) }}
+                                {% if form.parent_id.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.parent_id.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Deixe "Nenhuma" para criar uma categoria raiz
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.descricao.label(class="form-label") }}
+                        {{ form.descricao(class="form-control" + (" is-invalid" if form.descricao.errors else ""), rows="3") }}
+                        {% if form.descricao.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.descricao.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.cor.label(class="form-label") }}
+                        <div class="d-flex align-items-center gap-2">
+                            {{ form.cor(class="form-control" + (" is-invalid" if form.cor.errors else ""), type="color", style="width: 50px; height: 40px;") }}
+                            <span id="corTexto" class="text-muted small">{{ form.cor.data or '#007bff' }}</span>
+                            <div class="ms-auto">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="gerarCorAleatoria()">
+                                    <i class="fas fa-random me-1"></i>Aleatória
+                                </button>
+                            </div>
+                        </div>
+                        {% if form.cor.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.cor.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Escolha uma cor para identificar esta categoria</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Prévia da Categoria</label>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div id="previewCor" class="badge rounded-circle" style="background-color: {{ form.cor.data or '#007bff' }}; width: 25px; height: 25px;"></div>
+                                    <div>
+                                        <h6 class="mb-0" id="previewNome">{{ form.nome.data or 'Nome da Categoria' }}</h6>
+                                        <small class="text-muted" id="previewHierarquia">
+                                            <span id="previewParent">Categoria Raiz</span>
+                                            <span id="previewArrow" style="display: none;"> > </span>
+                                            <span id="previewCurrentName">{{ form.nome.data or 'Nome da Categoria' }}</span>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted" id="previewDescricao">{{ form.descricao.data or 'Descrição da categoria...' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Salvar Categoria
+                        </button>
+                        <a href="{{ url_for('categorias') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </a>
+                        <button type="button" class="btn btn-outline-info" onclick="visualizarEstrutura()">
+                            <i class="fas fa-sitemap me-2"></i>Ver Estrutura
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Visualização da Estrutura -->
+<div class="modal fade" id="modalEstrutura" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-sitemap me-2"></i>Estrutura Atual de Categorias
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="estruturaAtual">
+                    <div class="text-center py-3">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p class="text-muted mt-2">Carregando estrutura...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cores predefinidas para facilitar a escolha
+const coresPredefinidas = [
+    '#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', 
+    '#ff9f40', '#2ecc71', '#3498db', '#e74c3c', '#f39c12',
+    '#1abc9c', '#9b59b6', '#34495e', '#16a085', '#27ae60'
+];
+
+// Atualizar preview da categoria
+function atualizarPreview() {
+    const nome = document.getElementById('nome').value || 'Nome da Categoria';
+    const cor = document.getElementById('cor').value;
+    const parentSelect = document.getElementById('parent_id');
+    const parentText = parentSelect.options[parentSelect.selectedIndex].text;
+    const descricao = document.getElementById('descricao').value || 'Descrição da categoria...';
+    
+    document.getElementById('previewNome').textContent = nome;
+    document.getElementById('previewCurrentName').textContent = nome;
+    document.getElementById('previewCor').style.backgroundColor = cor;
+    document.getElementById('corTexto').textContent = cor;
+    document.getElementById('previewDescricao').textContent = descricao;
+    
+    // Atualizar hierarquia
+    if (parentSelect.value === '0') {
+        document.getElementById('previewParent').textContent = 'Categoria Raiz';
+        document.getElementById('previewArrow').style.display = 'none';
+    } else {
+        document.getElementById('previewParent').textContent = parentText;
+        document.getElementById('previewArrow').style.display = 'inline';
+    }
+}
+
+function gerarCorAleatoria() {
+    const corAleatoria = coresPredefinidas[Math.floor(Math.random() * coresPredefinidas.length)];
+    document.getElementById('cor').value = corAleatoria;
+    atualizarPreview();
+}
+
+function visualizarEstrutura() {
+    const modal = new bootstrap.Modal(document.getElementById('modalEstrutura'));
+    modal.show();
+    
+    // Carregar estrutura atual
+    fetch('/api/categorias-arvore')
+        .then(response => response.json())
+        .then(data => {
+            renderizarEstrutura(data);
+        })
+        .catch(error => {
+            document.getElementById('estruturaAtual').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar estrutura de categorias
+                </div>
+            `;
+        });
+}
+
+function renderizarEstrutura(categorias) {
+    if (categorias.length === 0) {
+        document.getElementById('estruturaAtual').innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
+                <p class="text-muted">Nenhuma categoria criada ainda</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const html = categorias.map(categoria => renderizarCategoriaEstrutura(categoria, 0)).join('');
+    document.getElementById('estruturaAtual').innerHTML = `
+        <div class="tree-structure">
+            ${html}
+        </div>
+    `;
+}
+
+function renderizarCategoriaEstrutura(categoria, nivel) {
+    const indentacao = 'margin-left: ' + (nivel * 20) + 'px;';
+    const temSubcategorias = categoria.subcategorias && categoria.subcategorias.length > 0;
+    
+    let html = `
+        <div class="mb-2" style="${indentacao}">
+            <div class="d-flex align-items-center p-2 border-start border-3" style="border-color: ${categoria.cor} !important;">
+                <div class="badge me-2" style="background-color: ${categoria.cor}; width: 12px; height: 12px; border-radius: 50%;"></div>
+                <strong>${categoria.nome}</strong>
+                ${categoria.descricao ? `<small class="text-muted ms-2">- ${categoria.descricao}</small>` : ''}
+            </div>
+            ${temSubcategorias ? categoria.subcategorias.map(sub => renderizarCategoriaEstrutura(sub, nivel + 1)).join('') : ''}
+        </div>
+    `;
+    
+    return html;
+}
+
+// Eventos para atualizar preview em tempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const nomeInput = document.getElementById('nome');
+    const corInput = document.getElementById('cor');
+    const parentSelect = document.getElementById('parent_id');
+    const descricaoInput = document.getElementById('descricao');
+    
+    if (nomeInput) nomeInput.addEventListener('input', atualizarPreview);
+    if (corInput) corInput.addEventListener('input', atualizarPreview);
+    if (parentSelect) parentSelect.addEventListener('change', atualizarPreview);
+    if (descricaoInput) descricaoInput.addEventListener('input', atualizarPreview);
+    
+    // Inicializar preview
+    atualizarPreview();
+    
+    // Verificar se há parent_id na URL (vindo de "adicionar subcategoria")
+    const urlParams = new URLSearchParams(window.location.search);
+    const parentId = urlParams.get('parent_id');
+    if (parentId && parentSelect) {
+        parentSelect.value = parentId;
+        atualizarPreview();
+    }
+});
+</script>
+
+<style>
+.tree-structure {
+    font-family: monospace;
+    line-height: 1.6;
+}
+
+.form-control[type="color"] {
+    padding: 2px;
+    border-radius: 6px;
+}
+
+.card.bg-light {
+    border: 2px dashed #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.card.bg-light:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa !important;
+}
+</style>
+{% endblock %}

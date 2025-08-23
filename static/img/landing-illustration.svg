@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="600px" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradientBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#f8f9fa" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="gradientChart" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0dcaf0" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0d6efd" stop-opacity="0.9"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000000" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- Main background shape with shadow -->
+  <rect x="100" y="50" width="600" height="400" rx="20" fill="url(#gradientBg)" stroke="#ffffff" stroke-width="2" filter="url(#shadow)"/>
+  
+  <!-- Chart bars with new colors -->
+  <rect x="150" y="300" width="60" height="100" rx="5" fill="#0dcaf0" opacity="0.7"/>
+  <rect x="230" y="250" width="60" height="150" rx="5" fill="#0d6efd" opacity="0.8"/>
+  <rect x="310" y="200" width="60" height="200" rx="5" fill="#6610f2" opacity="0.9"/>
+  <rect x="390" y="150" width="60" height="250" rx="5" fill="#6f42c1"/>
+  <rect x="470" y="220" width="60" height="180" rx="5" fill="#0d6efd" opacity="0.8"/>
+  <rect x="550" y="270" width="60" height="130" rx="5" fill="#0dcaf0" opacity="0.7"/>
+  
+  <!-- Line chart -->
+  <path d="M150,180 C200,120 250,200 300,150 C350,100 400,180 450,130 C500,80 550,150 600,120" 
+        stroke="#0d6efd" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- Circles representing data points -->
+  <circle cx="150" cy="180" r="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="230" cy="150" r="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="310" cy="160" r="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="390" cy="130" r="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="470" cy="140" r="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="550" cy="130" r="8" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  
+  <!-- Coins and financial symbols with better colors -->
+  <circle cx="200" cy="400" r="30" fill="#ffc107" stroke="#fd7e14" stroke-width="2"/>
+  <text x="200" y="410" font-family="Arial" font-size="24" text-anchor="middle" font-weight="bold" fill="#212529">$</text>
+  
+  <circle cx="600" cy="400" r="30" fill="#ffc107" stroke="#fd7e14" stroke-width="2"/>
+  <text x="600" y="410" font-family="Arial" font-size="24" text-anchor="middle" font-weight="bold" fill="#212529">$</text>
+  
+  <!-- Small decorative elements -->
+  <circle cx="150" cy="100" r="10" fill="#0dcaf0" opacity="0.6"/>
+  <circle cx="650" cy="100" r="10" fill="#0dcaf0" opacity="0.6"/>
+  <circle cx="180" cy="130" r="5" fill="#6610f2" opacity="0.6"/>
+  <circle cx="620" cy="130" r="5" fill="#6610f2" opacity="0.6"/>
+  
+  <!-- Additional decorative elements -->
+  <path d="M400,80 L420,80 L410,60 Z" fill="#0d6efd" opacity="0.8"/>
+  <path d="M360,80 L380,80 L370,60 Z" fill="#6610f2" opacity="0.8"/>
+  <path d="M440,80 L460,80 L450,60 Z" fill="#0dcaf0" opacity="0.8"/>
+</svg>

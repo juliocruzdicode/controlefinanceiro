@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmação de Email Obrigatória{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-white text-center">
+                    <h4><i class="fas fa-envelope-open"></i> Confirmação de Email Obrigatória</h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-envelope-open fa-5x text-warning mb-3"></i>
+                        <h5>Email não confirmado</h5>
+                        <p class="text-muted">Para sua segurança, você precisa confirmar seu email antes de acessar o sistema.</p>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong><i class="fas fa-info-circle"></i> Instruções:</strong>
+                        <ol class="text-left mt-2">
+                            <li>Verifique sua caixa de entrada do email: <strong>{{ user.email }}</strong></li>
+                            <li>Procure por um email do "Controle Financeiro"</li>
+                            <li>Clique no link de confirmação</li>
+                            <li>Retorne a esta página para fazer login</li>
+                        </ol>
+                    </div>
+
+                    <div class="mb-3">
+                        <p><strong>Não recebeu o email?</strong></p>
+                        <p class="text-muted small">Verifique sua pasta de spam/lixo eletrônico</p>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('resend_verification') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-paper-plane"></i> Reenviar Email de Confirmação
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar ao Login
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-center text-muted">
+                    <small>
+                        <i class="fas fa-shield-alt"></i> 
+                        Esta verificação garante a segurança da sua conta
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+    background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%) !important;
+}
+
+.btn {
+    border-radius: 25px;
+    padding: 10px 20px;
+    font-weight: 500;
+}
+
+.btn-outline-primary:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+ol li {
+    margin-bottom: 5px;
+}
+
+.alert {
+    border-radius: 10px;
+}
+</style>
+{% endblock %}

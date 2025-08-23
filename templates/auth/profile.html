@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-user"></i> Meu Perfil</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Informações da Conta</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Usuário:</strong></td>
+                                <td>{{ current_user.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ current_user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Último Login:</strong></td>
+                                <td>
+                                    {% if current_user.last_login %}
+                                        {{ current_user.last_login.strftime('%d/%m/%Y às %H:%M') }}
+                                    {% else %}
+                                        Nunca
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Conta criada:</strong></td>
+                                <td>{{ current_user.created_at.strftime('%d/%m/%Y') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Segurança</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Autenticação Multifator (MFA):</label>
+                            <div>
+                                {% if current_user.mfa_enabled %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-shield-alt"></i> Ativado
+                                    </span>
+                                    <form method="POST" action="{{ url_for('disable_mfa') }}" class="d-inline ms-2">
+                                        <button type="submit" class="btn btn-outline-warning btn-sm"
+                                                onclick="return confirm('Tem certeza que deseja desabilitar o MFA?')">
+                                            Desabilitar MFA
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> Desativado
+                                    </span>
+                                    <a href="{{ url_for('setup_mfa') }}" class="btn btn-success btn-sm ms-2">
+                                        <i class="fas fa-shield-alt"></i> Configurar MFA
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">
+                                MFA adiciona uma camada extra de segurança à sua conta
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <a href="{{ url_for('change_password') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-key"></i> Alterar Senha
+                            </a>
+                        </div>
+                        
+                        {% if current_user.is_admin %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-crown"></i>
+                            <strong>Administrador</strong> - Você tem acesso completo ao sistema
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5><i class="fas fa-palette"></i> Preferências de Tema</h5>
+                    </div>
+                    
+                    <div class="col-md-12 mt-3">
+                        <form method="POST" action="{{ url_for('atualizar_tema_usuario') }}">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="tema_id" class="form-label">Tema:</label>
+                                        <select name="tema_id" id="tema_id" class="form-select">
+                                            {% for tema in temas %}
+                                                <option value="{{ tema.id }}" {% if current_user.tema_id == tema.id %}selected{% endif %}>
+                                                    {{ tema.nome }}{% if tema.is_default %} (Padrão){% endif %}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <small class="text-muted">Escolha o tema visual do sistema</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Modo de Visualização:</label>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="dark_mode" id="mode_light" value="0" 
+                                                  {% if not current_user.dark_mode %}checked{% endif %}>
+                                            <label class="form-check-label" for="mode_light">
+                                                <i class="fas fa-sun"></i> Claro
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="dark_mode" id="mode_dark" value="1"
+                                                  {% if current_user.dark_mode %}checked{% endif %}>
+                                            <label class="form-check-label" for="mode_dark">
+                                                <i class="fas fa-moon"></i> Escuro
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Salvar Preferências
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="col-md-12 mt-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Visualização do Tema Atual</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <div class="d-flex flex-wrap">
+                                            <div class="color-sample me-2 mb-2" style="background-color: {{ cores.primary }};" title="Primário"></div>
+                                            <div class="color-sample me-2 mb-2" style="background-color: {{ cores.secondary }};" title="Secundário"></div>
+                                            <div class="color-sample me-2 mb-2" style="background-color: {{ cores.success }};" title="Sucesso"></div>
+                                            <div class="color-sample me-2 mb-2" style="background-color: {{ cores.danger }};" title="Perigo"></div>
+                                            <div class="color-sample me-2 mb-2" style="background-color: {{ cores.warning }};" title="Alerta"></div>
+                                            <div class="color-sample me-2 mb-2" style="background-color: {{ cores.info }};" title="Info"></div>
+                                            <div class="color-sample me-2 mb-2" style="background-color: {{ cores.background }};" title="Fundo"></div>
+                                            <div class="color-sample me-2 mb-2" style="background-color: {{ cores.text }};" title="Texto"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-12">
+                                        <div class="d-flex flex-wrap">
+                                            <button class="btn btn-primary me-1 mb-1">Primário</button>
+                                            <button class="btn btn-secondary me-1 mb-1">Secundário</button>
+                                            <button class="btn btn-success me-1 mb-1">Sucesso</button>
+                                            <button class="btn btn-danger me-1 mb-1">Perigo</button>
+                                            <button class="btn btn-warning me-1 mb-1">Alerta</button>
+                                            <button class="btn btn-info me-1 mb-1">Info</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .color-sample {
+        width: 30px;
+        height: 30px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+</style>
+{% endblock %}

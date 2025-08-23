@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400px" height="300px" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d6efd" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#0d6efd" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Growth chart background -->
+  <rect x="80" y="80" width="240" height="160" rx="5" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  
+  <!-- Grid lines -->
+  <line x1="80" y1="120" x2="320" y2="120" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="80" y1="160" x2="320" y2="160" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="80" y1="200" x2="320" y2="200" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  
+  <line x1="120" y1="80" x2="120" y2="240" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="160" y1="80" x2="160" y2="240" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="200" y1="80" x2="200" y2="240" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="240" y1="80" x2="240" y2="240" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="280" y1="80" x2="280" y2="240" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  
+  <!-- Growth line -->
+  <path d="M80,220 L120,210 L160,190 L200,170 L240,140 L280,100 L320,80" 
+        stroke="#0d6efd" stroke-width="3" fill="none" stroke-linecap="round"/>
+  
+  <!-- Area under the curve -->
+  <path d="M80,220 L120,210 L160,190 L200,170 L240,140 L280,100 L320,80 L320,240 L80,240 Z" 
+        fill="url(#gradient5)" opacity="0.3"/>
+  
+  <!-- Data points -->
+  <circle cx="80" cy="220" r="5" fill="#0d6efd"/>
+  <circle cx="120" cy="210" r="5" fill="#0d6efd"/>
+  <circle cx="160" cy="190" r="5" fill="#0d6efd"/>
+  <circle cx="200" cy="170" r="5" fill="#0d6efd"/>
+  <circle cx="240" cy="140" r="5" fill="#0d6efd"/>
+  <circle cx="280" cy="100" r="5" fill="#0d6efd"/>
+  <circle cx="320" cy="80" r="5" fill="#0d6efd"/>
+  
+  <!-- Dollar symbols for investment growth -->
+  <text x="80" y="60" font-family="Arial" font-size="16" fill="#0d6efd">$</text>
+  <text x="120" y="55" font-family="Arial" font-size="18" fill="#0d6efd">$</text>
+  <text x="160" y="50" font-family="Arial" font-size="20" fill="#0d6efd">$</text>
+  <text x="200" y="45" font-family="Arial" font-size="22" fill="#0d6efd">$</text>
+  <text x="240" y="40" font-family="Arial" font-size="24" fill="#0d6efd">$</text>
+  <text x="280" y="35" font-family="Arial" font-size="26" fill="#0d6efd">$</text>
+  <text x="320" y="30" font-family="Arial" font-size="28" fill="#0d6efd">$</text>
+</svg>

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Código de Backup - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-header text-center bg-warning text-dark">
+                <h4><i class="fas fa-key"></i> Código de Backup</h4>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <p class="text-muted">
+                        Se você perdeu acesso ao seu aplicativo autenticador,
+                        use um dos códigos de backup que foi fornecido durante a configuração do MFA.
+                    </p>
+                </div>
+                
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.backup_code.label(class="form-label") }}
+                        {{ form.backup_code(class="form-control text-center" + (" is-invalid" if form.backup_code.errors else "")) }}
+                        {% if form.backup_code.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.backup_code.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid mb-3">
+                        {{ form.submit(class="btn btn-warning btn-lg") }}
+                    </div>
+                </form>
+                
+                <div class="mt-3">
+                    <a href="{{ url_for('verify_mfa') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Voltar para MFA
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer text-center">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i>
+                    Cada código de backup só pode ser usado uma vez
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.form-control {
+    border-radius: 8px;
+}
+
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.container-fluid {
+    padding-top: 5vh;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Categoria - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-edit me-2"></i>Editar Categoria
+                </h4>
+                <p class="text-muted mb-0 mt-1">
+                    Editando: <strong>{{ categoria.nome_completo }}</strong>
+                </p>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.nome.label(class="form-label") }}
+                                {{ form.nome(class="form-control" + (" is-invalid" if form.nome.errors else "")) }}
+                                {% if form.nome.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.nome.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.parent_id.label(class="form-label") }}
+                                {{ form.parent_id(class="form-select" + (" is-invalid" if form.parent_id.errors else "")) }}
+                                {% if form.parent_id.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.parent_id.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Não é possível mover para uma subcategoria própria
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.descricao.label(class="form-label") }}
+                        {{ form.descricao(class="form-control" + (" is-invalid" if form.descricao.errors else ""), rows="3") }}
+                        {% if form.descricao.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.descricao.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.cor.label(class="form-label") }}
+                        <div class="d-flex align-items-center gap-2">
+                            {{ form.cor(class="form-control" + (" is-invalid" if form.cor.errors else ""), type="color", style="width: 50px; height: 40px;") }}
+                            <span id="corTexto" class="text-muted small">{{ form.cor.data or categoria.cor }}</span>
+                            <div class="ms-auto">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="gerarCorAleatoria()">
+                                    <i class="fas fa-random me-1"></i>Aleatória
+                                </button>
+                            </div>
+                        </div>
+                        {% if form.cor.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.cor.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Prévia da Categoria</label>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div id="previewCor" class="badge rounded-circle" style="background-color: {{ categoria.cor }}; width: 25px; height: 25px;"></div>
+                                    <div>
+                                        <h6 class="mb-0" id="previewNome">{{ categoria.nome }}</h6>
+                                        <small class="text-muted" id="previewHierarquia">
+                                            <span id="previewParent">
+                                                {% if categoria.parent %}{{ categoria.parent.nome }}{% else %}Categoria Raiz{% endif %}
+                                            </span>
+                                            <span id="previewArrow" {% if not categoria.parent %}style="display: none;"{% endif %}> > </span>
+                                            <span id="previewCurrentName">{{ categoria.nome }}</span>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted" id="previewDescricao">{{ categoria.descricao or 'Sem descrição' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if categoria.subcategorias %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Esta categoria possui {{ categoria.subcategorias|length }} subcategoria(s):</strong>
+                        <ul class="mb-0 mt-2">
+                            {% for sub in categoria.subcategorias %}
+                                <li>{{ sub.nome }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if categoria.transacoes %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Esta categoria possui {{ categoria.transacoes|length }} transação(ões) associada(s).</strong>
+                        <small class="d-block mt-1">As transações serão mantidas mesmo se você alterar a categoria.</small>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Salvar Alterações
+                        </button>
+                        <a href="{{ url_for('categorias') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Voltar
+                        </a>
+                        {% if not categoria.transacoes and not categoria.subcategorias %}
+                        <button type="button" class="btn btn-outline-danger ms-auto" onclick="confirmarExclusao()">
+                            <i class="fas fa-trash me-2"></i>Excluir Categoria
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="modalExclusao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir a categoria:</p>
+                <div class="alert alert-light">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="badge rounded-circle" style="background-color: {{ categoria.cor }}; width: 20px; height: 20px;"></div>
+                        <strong>{{ categoria.nome_completo }}</strong>
+                    </div>
+                </div>
+                <p class="text-danger mb-0">
+                    <small><i class="fas fa-warning me-1"></i>Esta ação não pode ser desfeita!</small>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="excluirCategoria()">
+                    <i class="fas fa-trash me-2"></i>Sim, Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cores predefinidas
+const coresPredefinidas = [
+    '#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff', 
+    '#ff9f40', '#2ecc71', '#3498db', '#e74c3c', '#f39c12',
+    '#1abc9c', '#9b59b6', '#34495e', '#16a085', '#27ae60'
+];
+
+// Atualizar preview da categoria
+function atualizarPreview() {
+    const nome = document.getElementById('nome').value || '{{ categoria.nome }}';
+    const cor = document.getElementById('cor').value;
+    const parentSelect = document.getElementById('parent_id');
+    const parentText = parentSelect.options[parentSelect.selectedIndex].text;
+    const descricao = document.getElementById('descricao').value || 'Sem descrição';
+    
+    document.getElementById('previewNome').textContent = nome;
+    document.getElementById('previewCurrentName').textContent = nome;
+    document.getElementById('previewCor').style.backgroundColor = cor;
+    document.getElementById('corTexto').textContent = cor;
+    document.getElementById('previewDescricao').textContent = descricao;
+    
+    // Atualizar hierarquia
+    if (parentSelect.value === '0') {
+        document.getElementById('previewParent').textContent = 'Categoria Raiz';
+        document.getElementById('previewArrow').style.display = 'none';
+    } else {
+        document.getElementById('previewParent').textContent = parentText;
+        document.getElementById('previewArrow').style.display = 'inline';
+    }
+}
+
+function gerarCorAleatoria() {
+    const corAleatoria = coresPredefinidas[Math.floor(Math.random() * coresPredefinidas.length)];
+    document.getElementById('cor').value = corAleatoria;
+    atualizarPreview();
+}
+
+function confirmarExclusao() {
+    const modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
+    modal.show();
+}
+
+function excluirCategoria() {
+    const categoriaId = {{ categoria.id }};
+    
+    fetch(`/api/categoria/${categoriaId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mostrar sucesso e redirecionar
+            alert(data.message);
+            window.location.href = "{{ url_for('categorias') }}";
+        } else {
+            alert('Erro: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao excluir categoria');
+    });
+}
+
+// Eventos para atualizar preview em tempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const nomeInput = document.getElementById('nome');
+    const corInput = document.getElementById('cor');
+    const parentSelect = document.getElementById('parent_id');
+    const descricaoInput = document.getElementById('descricao');
+    
+    if (nomeInput) nomeInput.addEventListener('input', atualizarPreview);
+    if (corInput) corInput.addEventListener('input', atualizarPreview);
+    if (parentSelect) parentSelect.addEventListener('change', atualizarPreview);
+    if (descricaoInput) descricaoInput.addEventListener('input', atualizarPreview);
+    
+    // Inicializar preview
+    atualizarPreview();
+});
+</script>
+{% endblock %}

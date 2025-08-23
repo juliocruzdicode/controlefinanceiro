@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400px" height="300px" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d6efd" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#0d6efd" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Brain representing financial habits -->
+  <path d="M200,80 C230,80 250,100 250,130 C250,150 240,160 250,180 C260,200 250,220 230,230 
+           C210,240 190,240 170,230 C150,220 140,200 150,180 C160,160 150,150 150,130 C150,100 170,80 200,80 Z" 
+        fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  
+  <!-- Brain folds -->
+  <path d="M180,90 C170,100 170,110 180,120" fill="none" stroke="#0d6efd" stroke-width="2" stroke-linecap="round"/>
+  <path d="M220,90 C230,100 230,110 220,120" fill="none" stroke="#0d6efd" stroke-width="2" stroke-linecap="round"/>
+  <path d="M160,130 C150,140 150,150 160,160" fill="none" stroke="#0d6efd" stroke-width="2" stroke-linecap="round"/>
+  <path d="M240,130 C250,140 250,150 240,160" fill="none" stroke="#0d6efd" stroke-width="2" stroke-linecap="round"/>
+  <path d="M170,180 C160,190 160,200 170,210" fill="none" stroke="#0d6efd" stroke-width="2" stroke-linecap="round"/>
+  <path d="M230,180 C240,190 240,200 230,210" fill="none" stroke="#0d6efd" stroke-width="2" stroke-linecap="round"/>
+  <path d="M190,230 C200,240 210,240 220,230" fill="none" stroke="#0d6efd" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Dollar sign in the center of the brain -->
+  <text x="200" y="160" font-family="Arial" font-size="36" fill="#0d6efd" text-anchor="middle">$</text>
+  
+  <!-- Habits surrounding the brain -->
+  <circle cx="130" cy="100" r="25" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <text x="130" y="105" font-family="Arial" font-size="12" fill="#0d6efd" text-anchor="middle">Planejar</text>
+  
+  <circle cx="270" cy="100" r="25" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <text x="270" y="105" font-family="Arial" font-size="12" fill="#0d6efd" text-anchor="middle">Poupar</text>
+  
+  <circle cx="110" cy="180" r="25" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <text x="110" y="185" font-family="Arial" font-size="12" fill="#0d6efd" text-anchor="middle">Controlar</text>
+  
+  <circle cx="290" cy="180" r="25" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <text x="290" y="185" font-family="Arial" font-size="12" fill="#0d6efd" text-anchor="middle">Aprender</text>
+  
+  <circle cx="200" cy="250" r="25" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <text x="200" y="255" font-family="Arial" font-size="12" fill="#0d6efd" text-anchor="middle">Focar</text>
+  
+  <!-- Lines connecting habits to brain -->
+  <line x1="145" y1="115" x2="165" y2="135" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="255" y1="115" x2="235" y2="135" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="125" y1="165" x2="160" y2="165" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="275" y1="165" x2="240" y2="165" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+  <line x1="200" y1="230" x2="200" y2="235" stroke="#0d6efd" stroke-width="1" stroke-dasharray="5,5"/>
+</svg>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="600px" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d6efd" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#0d6efd" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Features illustration -->
+  <circle cx="400" cy="300" r="180" fill="url(#gradient1)" opacity="0.5"/>
+  
+  <!-- Financial growth -->
+  <path d="M250,350 L350,250 L450,300 L550,200" 
+        stroke="#0d6efd" stroke-width="6" fill="none" stroke-linecap="round"/>
+  
+  <!-- Up arrow -->
+  <path d="M550,200 L520,220 M550,200 L570,230" 
+        stroke="#0d6efd" stroke-width="6" fill="none" stroke-linecap="round"/>
+  
+  <!-- Circles on the chart -->
+  <circle cx="250" cy="350" r="10" fill="#ffffff" stroke="#0d6efd" stroke-width="3"/>
+  <circle cx="350" cy="250" r="10" fill="#ffffff" stroke="#0d6efd" stroke-width="3"/>
+  <circle cx="450" cy="300" r="10" fill="#ffffff" stroke="#0d6efd" stroke-width="3"/>
+  <circle cx="550" cy="200" r="10" fill="#ffffff" stroke="#0d6efd" stroke-width="3"/>
+  
+  <!-- Pie chart -->
+  <path d="M400,300 L400,120 A180,180 0 0,1 560,240 z" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  <path d="M400,300 L560,240 A180,180 0 0,1 510,450 z" fill="#0d6efd" opacity="0.7" stroke="#0d6efd" stroke-width="2"/>
+  <path d="M400,300 L510,450 A180,180 0 0,1 230,400 z" fill="#0d6efd" opacity="0.5" stroke="#0d6efd" stroke-width="2"/>
+  <path d="M400,300 L230,400 A180,180 0 0,1 400,120 z" fill="#0d6efd" opacity="0.3" stroke="#0d6efd" stroke-width="2"/>
+  
+  <!-- Central circle -->
+  <circle cx="400" cy="300" r="30" fill="#ffffff" stroke="#0d6efd" stroke-width="3"/>
+  <text x="400" y="310" font-family="Arial" font-size="24" text-anchor="middle" fill="#0d6efd">$</text>
+</svg>

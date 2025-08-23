@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Novo Tema{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="fas fa-palette"></i> Novo Tema</h1>
+            <p class="lead">Crie um novo tema de cores para o sistema</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('admin_temas') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('novo_tema') }}">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.nome.label(class="form-label") }}
+                                    {{ form.nome(class="form-control" + (" is-invalid" if form.nome.errors else "")) }}
+                                    {% for error in form.nome.errors %}
+                                        <div class="invalid-feedback">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3 form-check mt-4">
+                                    {{ form.is_default(class="form-check-input") }}
+                                    {{ form.is_default.label(class="form-check-label") }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.descricao.label(class="form-label") }}
+                            {{ form.descricao(class="form-control" + (" is-invalid" if form.descricao.errors else ""), rows=3) }}
+                            {% for error in form.descricao.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h3>Modo Claro</h3>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_primaria.label(class="form-label") }}
+                                            {{ form.cor_primaria(class="form-control form-control-color" + (" is-invalid" if form.cor_primaria.errors else ""), type="color") }}
+                                            {% for error in form.cor_primaria.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_secundaria.label(class="form-label") }}
+                                            {{ form.cor_secundaria(class="form-control form-control-color" + (" is-invalid" if form.cor_secundaria.errors else ""), type="color") }}
+                                            {% for error in form.cor_secundaria.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_sucesso.label(class="form-label") }}
+                                            {{ form.cor_sucesso(class="form-control form-control-color" + (" is-invalid" if form.cor_sucesso.errors else ""), type="color") }}
+                                            {% for error in form.cor_sucesso.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_perigo.label(class="form-label") }}
+                                            {{ form.cor_perigo(class="form-control form-control-color" + (" is-invalid" if form.cor_perigo.errors else ""), type="color") }}
+                                            {% for error in form.cor_perigo.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_alerta.label(class="form-label") }}
+                                            {{ form.cor_alerta(class="form-control form-control-color" + (" is-invalid" if form.cor_alerta.errors else ""), type="color") }}
+                                            {% for error in form.cor_alerta.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_info.label(class="form-label") }}
+                                            {{ form.cor_info(class="form-control form-control-color" + (" is-invalid" if form.cor_info.errors else ""), type="color") }}
+                                            {% for error in form.cor_info.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_fundo.label(class="form-label") }}
+                                            {{ form.cor_fundo(class="form-control form-control-color" + (" is-invalid" if form.cor_fundo.errors else ""), type="color") }}
+                                            {% for error in form.cor_fundo.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_texto.label(class="form-label") }}
+                                            {{ form.cor_texto(class="form-control form-control-color" + (" is-invalid" if form.cor_texto.errors else ""), type="color") }}
+                                            {% for error in form.cor_texto.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h3>Modo Escuro</h3>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_primaria_dark.label(class="form-label") }}
+                                            {{ form.cor_primaria_dark(class="form-control form-control-color" + (" is-invalid" if form.cor_primaria_dark.errors else ""), type="color") }}
+                                            {% for error in form.cor_primaria_dark.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_secundaria_dark.label(class="form-label") }}
+                                            {{ form.cor_secundaria_dark(class="form-control form-control-color" + (" is-invalid" if form.cor_secundaria_dark.errors else ""), type="color") }}
+                                            {% for error in form.cor_secundaria_dark.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_sucesso_dark.label(class="form-label") }}
+                                            {{ form.cor_sucesso_dark(class="form-control form-control-color" + (" is-invalid" if form.cor_sucesso_dark.errors else ""), type="color") }}
+                                            {% for error in form.cor_sucesso_dark.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_perigo_dark.label(class="form-label") }}
+                                            {{ form.cor_perigo_dark(class="form-control form-control-color" + (" is-invalid" if form.cor_perigo_dark.errors else ""), type="color") }}
+                                            {% for error in form.cor_perigo_dark.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_alerta_dark.label(class="form-label") }}
+                                            {{ form.cor_alerta_dark(class="form-control form-control-color" + (" is-invalid" if form.cor_alerta_dark.errors else ""), type="color") }}
+                                            {% for error in form.cor_alerta_dark.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_info_dark.label(class="form-label") }}
+                                            {{ form.cor_info_dark(class="form-control form-control-color" + (" is-invalid" if form.cor_info_dark.errors else ""), type="color") }}
+                                            {% for error in form.cor_info_dark.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_fundo_dark.label(class="form-label") }}
+                                            {{ form.cor_fundo_dark(class="form-control form-control-color" + (" is-invalid" if form.cor_fundo_dark.errors else ""), type="color") }}
+                                            {% for error in form.cor_fundo_dark.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            {{ form.cor_texto_dark.label(class="form-label") }}
+                                            {{ form.cor_texto_dark(class="form-control form-control-color" + (" is-invalid" if form.cor_texto_dark.errors else ""), type="color") }}
+                                            {% for error in form.cor_texto_dark.errors %}
+                                                <div class="invalid-feedback">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{{ url_for('admin_temas') }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Tema
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

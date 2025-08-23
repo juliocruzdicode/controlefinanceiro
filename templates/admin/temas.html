@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciamento de Temas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="fas fa-palette"></i> Gerenciamento de Temas</h1>
+            <p class="lead">Configure os temas de cores do sistema</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('novo_tema') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Novo Tema
+            </a>
+            <a href="{{ url_for('admin') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    {% if temas %}
+        <div class="row">
+            {% for tema in temas %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">{{ tema.nome }}</h5>
+                            {% if tema.is_default %}
+                                <span class="badge bg-success">Padrão</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            <p>{{ tema.descricao }}</p>
+                            
+                            <h6 class="mt-3">Modo Claro</h6>
+                            <div class="d-flex flex-wrap mb-3">
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_primaria }};" title="Primária"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_secundaria }};" title="Secundária"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_sucesso }};" title="Sucesso"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_perigo }};" title="Perigo"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_alerta }};" title="Alerta"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_info }};" title="Info"></div>
+                            </div>
+                            
+                            <h6 class="mt-3">Modo Escuro</h6>
+                            <div class="d-flex flex-wrap">
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_primaria_dark }};" title="Primária"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_secundaria_dark }};" title="Secundária"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_sucesso_dark }};" title="Sucesso"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_perigo_dark }};" title="Perigo"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_alerta_dark }};" title="Alerta"></div>
+                                <div class="color-sample me-2 mb-2" style="background-color: {{ tema.cor_info_dark }};" title="Info"></div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('editar_tema', tema_id=tema.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                                {% if not tema.is_default %}
+                                    <form action="{{ url_for('excluir_tema', tema_id=tema.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este tema?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-trash"></i> Excluir
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Nenhum tema cadastrado. Crie um novo tema clicando no botão acima.
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .color-sample {
+        width: 30px;
+        height: 30px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+</style>
+{% endblock %}

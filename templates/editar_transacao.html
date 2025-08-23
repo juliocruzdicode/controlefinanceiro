@@ -1,0 +1,681 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Transação - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-edit me-2"></i>Editar Transação
+                </h4>
+                {% if transacao.is_recorrente %}
+                <div class="alert alert-info mt-2 mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Transação Recorrente:</strong> Esta transação faz parte de uma recorrência.
+                    Para editar todas as transações futuras, 
+                    <a href="{{ url_for('transacoes_recorrentes') }}" class="alert-link">gerencie a recorrência</a>.
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.descricao.label(class="form-label") }}
+                        {{ form.descricao(class="form-control" + (" is-invalid" if form.descricao.errors else "")) }}
+                        {% if form.descricao.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.descricao.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                {{ form.valor.label(class="form-label") }}
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    {{ form.valor(class="form-control" + (" is-invalid" if form.valor.errors else ""), step="0.01") }}
+                                    {% if form.valor.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.valor.errors %}{{ error }}{% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                {{ form.tipo.label(class="form-label") }}
+                                {{ form.tipo(class="form-select" + (" is-invalid" if form.tipo.errors else ""), id="tipoSelect") }}
+                                {% if form.tipo.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.tipo.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                {{ form.data_transacao.label(class="form-label") }}
+                                {{ form.data_transacao(class="form-control" + (" is-invalid" if form.data_transacao.errors else "")) }}
+                                {% if form.data_transacao.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.data_transacao.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.categoria_id.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.categoria_id(class="form-select" + (" is-invalid" if form.categoria_id.errors else "")) }}
+                            <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#modalNovaCategoria" title="Criar Nova Categoria">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {% if form.categoria_id.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.categoria_id.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Campo de Tags -->
+                    <div class="mb-3">
+                        {{ form.tags.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.tags(class="form-control" + (" is-invalid" if form.tags.errors else ""), id="tagsInput") }}
+                            <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#modalNovaTag" title="Criar Nova Tag">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button" id="tagSuggestionsBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-tags"></i> Sugestões
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="tagSuggestionsBtn" id="tagSuggestions">
+                                <!-- Tags sugeridas serão carregadas via JavaScript -->
+                            </ul>
+                        </div>
+                        {% if form.tags.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.tags.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> Digite as tags separadas por vírgulas ou use as sugestões
+                        </small>
+                        <div id="selectedTags" class="mt-2"></div>
+                    </div>
+
+                    <!-- Informações sobre recorrência (apenas visualização) -->
+                    {% if transacao.is_recorrente %}
+                    <div class="card mb-3" style="background-color: #f8f9fa;">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-calendar-alt me-2"></i>Informações da Recorrência
+                            </h6>
+                            {% if transacao.recorrencia %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Frequência:</strong> {{ transacao.recorrencia.tipo_recorrencia.value|title }}<br>
+                                    <strong>Status:</strong> 
+                                    <span class="badge bg-{{ 'success' if transacao.recorrencia.status.value == 'ativa' else 'warning' }}">
+                                        {{ transacao.recorrencia.status.value|title }}
+                                    </span>
+                                </div>
+                                <div class="col-md-6">
+                                    {% if transacao.recorrencia.is_parcelada %}
+                                    <strong>Parcelas:</strong> {{ transacao.recorrencia.parcelas_geradas }}/{{ transacao.recorrencia.total_parcelas }}<br>
+                                    {% else %}
+                                    <strong>Tipo:</strong> Contínua<br>
+                                    {% endif %}
+                                    <strong>Transações geradas:</strong> {{ transacao.recorrencia.transacoes|length }}
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <a href="{{ url_for('editar_transacao_recorrente', recorrente_id=transacao.recorrencia.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-cogs me-1"></i>Editar Recorrência
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Desabilitar campos de recorrência para transações existentes -->
+                    <script>
+                        // Ocultar opções de recorrência para edição
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const recorrenciaOptions = document.getElementById('opcoes-recorrencia');
+                            if (recorrenciaOptions) {
+                                recorrenciaOptions.style.display = 'none';
+                            }
+                        });
+                    </script>
+                    {% else %}
+                    <!-- Para transações não recorrentes, mostrar opções desabilitadas -->
+                    <div class="card mb-3" style="background-color: #f8f9fa;">
+                        <div class="card-body">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" disabled>
+                                <label class="form-check-label text-muted">
+                                    Transação Recorrente
+                                </label>
+                            </div>
+                            <small class="text-muted">
+                                Para converter em transação recorrente, exclua esta transação e crie uma nova marcando a opção "Transação Recorrente".
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Salvar Alterações
+                        </button>
+                        <a href="{{ url_for('transacoes') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </a>
+                        {% if not transacao.is_recorrente %}
+                        <button type="button" class="btn btn-outline-danger ms-auto" onclick="excluirTransacao({{ transacao.id }}, '{{ transacao.descricao }}')">
+                            <i class="fas fa-trash me-2"></i>Excluir Transação
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Mudar cor do select baseado no tipo
+document.getElementById('tipoSelect').addEventListener('change', function() {
+    const select = this;
+    if (select.value === 'receita') {
+        select.className = 'form-select border-success';
+    } else if (select.value === 'despesa') {
+        select.className = 'form-select border-danger';
+    } else {
+        select.className = 'form-select';
+    }
+});
+
+// Função para excluir transação
+function excluirTransacao(transacaoId, descricao) {
+    if (confirm(`Tem certeza que deseja excluir a transação "${descricao}"?`)) {
+        fetch(`/api/transacao/${transacaoId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.href = '{{ url_for("transacoes") }}';
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao excluir transação');
+        });
+    }
+}
+
+// Aplicar configurações iniciais
+window.addEventListener('DOMContentLoaded', function() {
+    const select = document.getElementById('tipoSelect');
+    select.dispatchEvent(new Event('change'));
+    
+    // Carregar tags disponíveis
+    loadTagSuggestions();
+    setupTagInput();
+});
+
+// Carregar sugestões de tags
+async function loadTagSuggestions() {
+    try {
+        const response = await fetch('/api/tags');
+        const tags = await response.json();
+        
+        const suggestionsContainer = document.getElementById('tagSuggestions');
+        suggestionsContainer.innerHTML = '';
+        
+        tags.forEach(tag => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <a class="dropdown-item tag-suggestion" href="#" data-tag="${tag.nome}" style="color: ${tag.cor}">
+                    <i class="fas fa-tag"></i> ${tag.nome}
+                    ${tag.descricao ? `<small class="text-muted d-block">${tag.descricao}</small>` : ''}
+                </a>
+            `;
+            suggestionsContainer.appendChild(li);
+        });
+        
+        // Adicionar event listeners para as sugestões
+        document.querySelectorAll('.tag-suggestion').forEach(suggestion => {
+            suggestion.addEventListener('click', function(e) {
+                e.preventDefault();
+                addTag(this.dataset.tag);
+            });
+        });
+        
+    } catch (error) {
+        console.error('Erro ao carregar tags:', error);
+    }
+}
+
+// Configurar input de tags
+function setupTagInput() {
+    const tagInput = document.getElementById('tagsInput');
+    
+    // Adicionar tag ao pressionar Enter ou vírgula
+    tagInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const tagName = this.value.trim();
+            if (tagName) {
+                addTag(tagName);
+                this.value = '';
+            }
+        }
+    });
+    
+    // Processar tags existentes se estiver editando
+    if (tagInput.value) {
+        const existingTags = tagInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+        existingTags.forEach(tag => addTag(tag));
+        tagInput.value = '';
+    }
+}
+
+// Adicionar uma tag
+function addTag(tagName) {
+    tagName = tagName.trim();
+    if (!tagName) return;
+    
+    const selectedTagsContainer = document.getElementById('selectedTags');
+    const tagInput = document.getElementById('tagsInput');
+    
+    // Verificar se a tag já existe
+    const existingTags = Array.from(selectedTagsContainer.children).map(tag => tag.dataset.tagName);
+    if (existingTags.includes(tagName.toLowerCase())) {
+        return;
+    }
+    
+    // Criar elemento da tag
+    const tagElement = document.createElement('span');
+    tagElement.className = 'badge bg-secondary me-1 mb-1';
+    tagElement.dataset.tagName = tagName.toLowerCase();
+    tagElement.innerHTML = `
+        <i class="fas fa-tag"></i> ${tagName}
+        <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 0.7em;" onclick="removeTag(this)"></button>
+    `;
+    
+    selectedTagsContainer.appendChild(tagElement);
+    updateTagsInput();
+}
+
+// Remover uma tag
+function removeTag(button) {
+    button.parentElement.remove();
+    updateTagsInput();
+}
+
+// Atualizar o input oculto com as tags selecionadas
+function updateTagsInput() {
+    const selectedTags = Array.from(document.getElementById('selectedTags').children)
+        .map(tag => tag.textContent.replace('×', '').trim());
+    
+    document.getElementById('tagsInput').value = selectedTags.join(', ');
+}
+</script>
+
+<!-- Modal Nova Categoria -->
+<div class="modal fade" id="modalNovaCategoria" tabindex="-1" aria-labelledby="modalNovaCategoriaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNovaCategoriaLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Nova Categoria
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovaCategoria">
+                    <div class="mb-3">
+                        <label for="categoriaPai" class="form-label">Categoria Pai (opcional)</label>
+                        <select class="form-select" id="categoriaPai">
+                            <option value="">Nenhuma (Categoria Raiz)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nomeCategoria" class="form-label">Nome da Categoria</label>
+                        <input type="text" class="form-control" id="nomeCategoria" required maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label for="descricaoCategoria" class="form-label">Descrição (opcional)</label>
+                        <textarea class="form-control" id="descricaoCategoria" rows="3" maxlength="200"></textarea>
+                    </div>
+                    <div id="alertCategoria" class="alert" style="display: none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="criarCategoria()">
+                    <i class="fas fa-save me-1"></i>Criar Categoria
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova Tag -->
+<div class="modal fade" id="modalNovaTag" tabindex="-1" aria-labelledby="modalNovaTagLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNovaTagLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Nova Tag
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovaTag">
+                    <div class="mb-3">
+                        <label for="nomeTag" class="form-label">Nome da Tag *</label>
+                        <input type="text" class="form-control" id="nomeTag" required maxlength="50" 
+                               placeholder="Ex: pessoal, trabalho, viagem">
+                    </div>
+                    <div class="mb-3">
+                        <label for="corTag" class="form-label">Cor</label>
+                        <input type="color" class="form-control form-control-color" id="corTag" value="#6c757d">
+                    </div>
+                    <div class="mb-3">
+                        <label for="descricaoTag" class="form-label">Descrição (opcional)</label>
+                        <textarea class="form-control" id="descricaoTag" rows="3" maxlength="200" 
+                                  placeholder="Descrição opcional da tag"></textarea>
+                    </div>
+                    <div id="alertTag" class="alert" style="display: none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="criarTag()">
+                    <i class="fas fa-save me-1"></i>Criar Tag
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função para criar nova categoria
+function criarCategoria() {
+    const nome = document.getElementById('nomeCategoria').value.trim();
+    const descricao = document.getElementById('descricaoCategoria').value.trim();
+    const categoriaPai = document.getElementById('categoriaPai').value;
+    const alertElement = document.getElementById('alertCategoria');
+    
+    if (!nome) {
+        showAlert('alertCategoria', 'Nome da categoria é obrigatório!', 'danger');
+        return;
+    }
+    
+    // Limpar alertas anteriores
+    alertElement.style.display = 'none';
+    
+    // Preparar dados para envio
+    const dados = {
+        nome: nome,
+        descricao: descricao
+    };
+    
+    // Adicionar categoria pai se selecionada
+    if (categoriaPai) {
+        dados.parent_id = parseInt(categoriaPai);
+    }
+    
+    // Enviar requisição AJAX
+    fetch('/api/categoria/nova', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Adicionar nova opção ao select de categoria
+            const categoriaSelect = document.querySelector('select[name="categoria_id"]');
+            const nomeCompleto = data.categoria.nome_completo || data.categoria.nome;
+            const newOption = new Option(nomeCompleto, data.categoria.id);
+            categoriaSelect.add(newOption);
+            categoriaSelect.value = data.categoria.id;
+            
+            // Fechar modal e limpar formulário
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaCategoria'));
+            modal.hide();
+            document.getElementById('formNovaCategoria').reset();
+            
+            // Mostrar mensagem de sucesso
+            showToast('Categoria criada com sucesso!', 'success');
+        } else {
+            showAlert('alertCategoria', data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showAlert('alertCategoria', 'Erro ao criar categoria. Tente novamente.', 'danger');
+    });
+}
+
+// Função para criar nova tag
+function criarTag() {
+    const nome = document.getElementById('nomeTag').value.trim();
+    const cor = document.getElementById('corTag').value;
+    const descricao = document.getElementById('descricaoTag').value.trim();
+    const alertElement = document.getElementById('alertTag');
+    
+    if (!nome) {
+        showAlert('alertTag', 'Nome da tag é obrigatório!', 'danger');
+        return;
+    }
+    
+    // Limpar alertas anteriores
+    alertElement.style.display = 'none';
+    
+    // Enviar requisição AJAX
+    fetch('/api/tag/nova', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            nome: nome,
+            cor: cor,
+            descricao: descricao
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Adicionar nova tag ao campo de input
+            const tagsInput = document.getElementById('tagsInput');
+            const currentTags = tagsInput.value.trim();
+            
+            if (currentTags) {
+                // Se já há tags, adicionar vírgula e a nova tag
+                tagsInput.value = currentTags + ', ' + data.tag.nome;
+            } else {
+                // Se não há tags, adicionar apenas a nova tag
+                tagsInput.value = data.tag.nome;
+            }
+            
+            // Recarregar as sugestões de tags
+            loadTagSuggestions();
+            
+            // Fechar modal e limpar formulário
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaTag'));
+            modal.hide();
+            document.getElementById('formNovaTag').reset();
+            document.getElementById('corTag').value = '#6c757d'; // Resetar cor padrão
+            
+            // Mostrar mensagem de sucesso
+            showToast('Tag criada com sucesso!', 'success');
+        } else {
+            showAlert('alertTag', data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showAlert('alertTag', 'Erro ao criar tag. Tente novamente.', 'danger');
+    });
+}
+
+// Função para mostrar alertas nos modais
+function showAlert(elementId, message, type) {
+    const alertElement = document.getElementById(elementId);
+    alertElement.className = `alert alert-${type}`;
+    alertElement.textContent = message;
+    alertElement.style.display = 'block';
+}
+
+// Função para mostrar toast de sucesso
+function showToast(message, type) {
+    // Criar toast dinamicamente
+    const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remover toast do DOM após ser ocultado
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+// Função para criar container de toasts se não existir
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Event listener para limpar alertas quando o modal é fechado
+document.getElementById('modalNovaCategoria').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('alertCategoria').style.display = 'none';
+    document.getElementById('formNovaCategoria').reset();
+});
+
+// Event listener para carregar categorias quando o modal de categoria for aberto
+document.getElementById('modalNovaCategoria').addEventListener('show.bs.modal', function () {
+    carregarCategoriasPai();
+});
+
+// Função para carregar categorias pai disponíveis
+function carregarCategoriasPai() {
+    const selectCategoriaPai = document.getElementById('categoriaPai');
+    
+    fetch('/api/categorias-arvore')
+        .then(response => response.json())
+        .then(categorias => {
+            // Limpar opções existentes (exceto a primeira)
+            selectCategoriaPai.innerHTML = '<option value="">Nenhuma (Categoria Raiz)</option>';
+            
+            // Renderizar categorias de forma hierárquica
+            categorias.forEach(categoria => {
+                adicionarCategoriaOption(selectCategoriaPai, categoria, 0);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar categorias:', error);
+        });
+}
+
+// Função recursiva para adicionar categorias com hierarquia visual
+function adicionarCategoriaOption(select, categoria, nivel) {
+    const indentacao = '  '.repeat(nivel) + (nivel > 0 ? '└─ ' : '');
+    const option = document.createElement('option');
+    option.value = categoria.id;
+    option.textContent = indentacao + categoria.nome;
+    select.appendChild(option);
+    
+    // Adicionar subcategorias recursivamente
+    if (categoria.subcategorias && categoria.subcategorias.length > 0) {
+        categoria.subcategorias.forEach(subcategoria => {
+            adicionarCategoriaOption(select, subcategoria, nivel + 1);
+        });
+    }
+}
+
+// Event listener para carregar categorias quando o modal de categoria for aberto
+document.getElementById('modalNovaCategoria').addEventListener('show.bs.modal', function () {
+    carregarCategoriasPai();
+});
+
+// Função para carregar categorias pai disponíveis
+function carregarCategoriasPai() {
+    const selectCategoriaPai = document.getElementById('categoriaPai');
+    
+    fetch('/api/categorias')
+        .then(response => response.json())
+        .then(categorias => {
+            // Limpar opções existentes (exceto a primeira)
+            selectCategoriaPai.innerHTML = '<option value="">Nenhuma (Categoria Raiz)</option>';
+            
+            // Ordenar categorias por nome completo ou nome
+            const categoriasOrdenadas = categorias.sort((a, b) => {
+                const nomeA = a.nome_completo || a.nome;
+                const nomeB = b.nome_completo || b.nome;
+                return nomeA.localeCompare(nomeB, 'pt-BR');
+            });
+            
+            // Adicionar opções de categorias
+            categoriasOrdenadas.forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria.id;
+                option.textContent = categoria.nome_completo || categoria.nome;
+                selectCategoriaPai.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar categorias:', error);
+        });
+}
+
+document.getElementById('modalNovaTag').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('alertTag').style.display = 'none';
+    document.getElementById('formNovaTag').reset();
+    document.getElementById('corTag').value = '#6c757d';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Categorias - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2">Categorias</h1>
+        <p class="text-muted">Gerencie suas categorias de receitas e despesas de forma hierárquica</p>
+    </div>
+    <a href="{{ url_for('nova_categoria') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Nova Categoria
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Árvore de Categorias</h5>
+                <button class="btn btn-outline-primary btn-sm" onclick="expandirTodas()">
+                    <i class="fas fa-expand-arrows-alt me-1"></i>Expandir Todas
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div id="arvore-categorias" class="p-3">
+                    <div class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="text-muted mt-2">Carregando categorias...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Resumo</h5>
+            </div>
+            <div class="card-body">
+                <div id="resumo-categorias">
+                    <div class="text-center py-3">
+                        <i class="fas fa-spinner fa-spin text-muted"></i>
+                        <p class="text-muted mt-2">Calculando...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-body text-center">
+                <h5>Ações Rápidas</h5>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('nova_categoria') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Nova Categoria
+                    </a>
+                    <button class="btn btn-outline-info" onclick="visualizarEstatisticas()">
+                        <i class="fas fa-chart-pie me-2"></i>Estatísticas
+                    </button>
+                    <button class="btn btn-outline-success" onclick="exportarCategorias()">
+                        <i class="fas fa-download me-2"></i>Exportar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let categoriasData = [];
+
+// Carregar dados das categorias
+function carregarCategorias() {
+    fetch('/api/categorias-arvore')
+        .then(response => response.json())
+        .then(data => {
+            categoriasData = data;
+            renderizarArvore();
+            calcularResumo();
+        })
+        .catch(error => {
+            console.error('Erro ao carregar categorias:', error);
+            document.getElementById('arvore-categorias').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erro ao carregar categorias. Recarregue a página.
+                </div>
+            `;
+        });
+}
+
+function renderizarArvore() {
+    const container = document.getElementById('arvore-categorias');
+    
+    if (categoriasData.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Nenhuma categoria encontrada</h4>
+                <p class="text-muted">Crie categorias para organizar suas transações</p>
+                <a href="{{ url_for('nova_categoria') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Criar Primeira Categoria
+                </a>
+            </div>
+        `;
+        return;
+    }
+    
+    const html = categoriasData.map(categoria => renderizarCategoria(categoria, 0)).join('');
+    container.innerHTML = html;
+}
+
+function renderizarCategoria(categoria, nivel) {
+    const indentacao = 'margin-left: ' + (nivel * 20) + 'px;';
+    const temSubcategorias = categoria.subcategorias && categoria.subcategorias.length > 0;
+    const iconePrincipal = temSubcategorias ? 'fas fa-folder' : 'fas fa-tag';
+    
+    let html = `
+        <div class="categoria-item mb-2" style="${indentacao}">
+            <div class="d-flex align-items-center justify-content-between p-2 border rounded">
+                <div class="d-flex align-items-center">
+                    ${temSubcategorias ? `
+                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="toggleCategoria(${categoria.id})">
+                            <i class="fas fa-chevron-right" id="toggle-${categoria.id}"></i>
+                        </button>
+                    ` : '<div style="width: 40px;"></div>'}
+                    
+                    <div class="badge me-2" style="background-color: ${categoria.cor}; width: 15px; height: 15px; border-radius: 50%;"></div>
+                    
+                    <div>
+                        <h6 class="mb-0">
+                            <i class="${iconePrincipal} me-2"></i>
+                            ${categoria.nome}
+                        </h6>
+                        ${categoria.descricao ? `<small class="text-muted">${categoria.descricao}</small>` : ''}
+                    </div>
+                </div>
+                
+                <div class="btn-group btn-group-sm">
+                    <a href="/editar-categoria/${categoria.id}" class="btn btn-outline-primary" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <button class="btn btn-outline-success" onclick="adicionarSubcategoria(${categoria.id})" title="Adicionar Subcategoria">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="excluirCategoria(${categoria.id}, '${categoria.nome}')" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            
+            ${temSubcategorias ? `
+                <div id="subcategorias-${categoria.id}" class="subcategorias" style="display: none;">
+                    ${categoria.subcategorias.map(sub => renderizarCategoria(sub, nivel + 1)).join('')}
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    return html;
+}
+
+function toggleCategoria(categoriaId) {
+    const subcategorias = document.getElementById(`subcategorias-${categoriaId}`);
+    const toggle = document.getElementById(`toggle-${categoriaId}`);
+    
+    if (subcategorias.style.display === 'none') {
+        subcategorias.style.display = 'block';
+        toggle.className = 'fas fa-chevron-down';
+    } else {
+        subcategorias.style.display = 'none';
+        toggle.className = 'fas fa-chevron-right';
+    }
+}
+
+function expandirTodas() {
+    const subcategorias = document.querySelectorAll('.subcategorias');
+    const toggles = document.querySelectorAll('[id^="toggle-"]');
+    
+    subcategorias.forEach(sub => sub.style.display = 'block');
+    toggles.forEach(toggle => toggle.className = 'fas fa-chevron-down');
+}
+
+function calcularResumo() {
+    // Aqui você pode fazer uma requisição para calcular estatísticas
+    const totalCategorias = contarTodasCategorias(categoriasData);
+    const categoriasRaiz = categoriasData.length;
+    
+    document.getElementById('resumo-categorias').innerHTML = `
+        <div class="row text-center">
+            <div class="col-6">
+                <h4 class="text-primary">${totalCategorias}</h4>
+                <small class="text-muted">Total de Categorias</small>
+            </div>
+            <div class="col-6">
+                <h4 class="text-success">${categoriasRaiz}</h4>
+                <small class="text-muted">Categorias Raiz</small>
+            </div>
+        </div>
+        <hr>
+        <div class="text-center">
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Estrutura hierárquica para melhor organização
+            </small>
+        </div>
+    `;
+}
+
+function contarTodasCategorias(categorias) {
+    let total = 0;
+    categorias.forEach(categoria => {
+        total += 1;
+        if (categoria.subcategorias) {
+            total += contarTodasCategorias(categoria.subcategorias);
+        }
+    });
+    return total;
+}
+
+function adicionarSubcategoria(parentId) {
+    // Redirecionar para nova categoria com parent pré-selecionado
+    window.location.href = `{{ url_for('nova_categoria') }}?parent_id=${parentId}`;
+}
+
+function excluirCategoria(id, nome) {
+    if (!confirm(`Tem certeza que deseja excluir a categoria "${nome}"?`)) {
+        return;
+    }
+    
+    fetch(`/api/categoria/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            carregarCategorias();
+            mostrarToast(data.message, 'success');
+        } else {
+            alert('Erro: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao excluir categoria');
+    });
+}
+
+function mostrarToast(mensagem, tipo = 'info') {
+    // Criar toast dinamicamente
+    const toastHtml = `
+        <div class="toast align-items-center text-bg-${tipo} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-${tipo === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+                    ${mensagem}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    // Adicionar ao container de toasts (criar se não existir)
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '1060';
+        document.body.appendChild(toastContainer);
+    }
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = toastContainer.lastElementChild;
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Remover após ser ocultado
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+function visualizarEstatisticas() {
+    alert('Estatísticas detalhadas serão implementadas em breve!');
+}
+
+function exportarCategorias() {
+    alert('Exportação de categorias será implementada em breve!');
+}
+
+// Carregar dados quando a página carregar
+document.addEventListener('DOMContentLoaded', carregarCategorias);
+</script>
+{% endblock %}

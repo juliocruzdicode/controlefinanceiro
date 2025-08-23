@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Tag - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-edit me-2"></i>Editar Tag: {{ tag.nome }}
+                </h4>
+                {% if tag.total_transacoes > 0 %}
+                <div class="alert alert-info mt-2 mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Atenção:</strong> Esta tag está sendo usada em {{ tag.total_transacoes }} transação(ões).
+                    As alterações afetarão todas elas.
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.nome.label(class="form-label") }}
+                        {{ form.nome(class="form-control" + (" is-invalid" if form.nome.errors else "")) }}
+                        {% if form.nome.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.nome.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> O nome será automaticamente formatado (primeira letra maiúscula)
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.descricao.label(class="form-label") }}
+                        {{ form.descricao(class="form-control" + (" is-invalid" if form.descricao.errors else "")) }}
+                        {% if form.descricao.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.descricao.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.cor.label(class="form-label") }}
+                        <div class="row">
+                            <div class="col-md-4">
+                                {{ form.cor(class="form-control form-control-color" + (" is-invalid" if form.cor.errors else "")) }}
+                            </div>
+                            <div class="col-md-8">
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    <small class="text-muted w-100 mb-1">Cores sugeridas:</small>
+                                    <button type="button" class="btn btn-sm color-btn" data-color="#007bff" style="background-color: #007bff; width: 30px; height: 30px; border-radius: 4px;"></button>
+                                    <button type="button" class="btn btn-sm color-btn" data-color="#28a745" style="background-color: #28a745; width: 30px; height: 30px; border-radius: 4px;"></button>
+                                    <button type="button" class="btn btn-sm color-btn" data-color="#ffc107" style="background-color: #ffc107; width: 30px; height: 30px; border-radius: 4px;"></button>
+                                    <button type="button" class="btn btn-sm color-btn" data-color="#dc3545" style="background-color: #dc3545; width: 30px; height: 30px; border-radius: 4px;"></button>
+                                    <button type="button" class="btn btn-sm color-btn" data-color="#6f42c1" style="background-color: #6f42c1; width: 30px; height: 30px; border-radius: 4px;"></button>
+                                    <button type="button" class="btn btn-sm color-btn" data-color="#fd7e14" style="background-color: #fd7e14; width: 30px; height: 30px; border-radius: 4px;"></button>
+                                    <button type="button" class="btn btn-sm color-btn" data-color="#20c997" style="background-color: #20c997; width: 30px; height: 30px; border-radius: 4px;"></button>
+                                    <button type="button" class="btn btn-sm color-btn" data-color="#e83e8c" style="background-color: #e83e8c; width: 30px; height: 30px; border-radius: 4px;"></button>
+                                </div>
+                            </div>
+                        </div>
+                        {% if form.cor.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.cor.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.ativa(class="form-check-input" + (" is-invalid" if form.ativa.errors else "")) }}
+                            {{ form.ativa.label(class="form-check-label") }}
+                            {% if form.ativa.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.ativa.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <small class="form-text text-muted">
+                            Tags inativas não aparecem nas sugestões, mas continuam associadas às transações existentes
+                        </small>
+                    </div>
+
+                    <!-- Preview da Tag -->
+                    <div class="mb-4">
+                        <label class="form-label">Visualização</label>
+                        <div class="p-3 bg-light rounded">
+                            <span id="tagPreview" class="badge" style="background-color: {{ tag.cor }}; font-size: 1em;">
+                                <i class="fas fa-tag"></i> {{ tag.nome }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Estatísticas da Tag -->
+                    {% if tag.total_transacoes > 0 %}
+                    <div class="mb-4">
+                        <label class="form-label">Uso da Tag</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center p-2">
+                                        <small>Transações</small>
+                                        <h6 class="mb-0">{{ tag.total_transacoes }}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center p-2">
+                                        <small>Receitas</small>
+                                        <h6 class="mb-0">R$ {{ "%.2f"|format(tag.total_receitas) }}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-danger text-white">
+                                    <div class="card-body text-center p-2">
+                                        <small>Despesas</small>
+                                        <h6 class="mb-0">R$ {{ "%.2f"|format(tag.total_despesas) }}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('tags') }}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Atualizar preview da tag em tempo real
+function updateTagPreview() {
+    const nome = document.querySelector('input[name="nome"]').value || '{{ tag.nome }}';
+    const cor = document.querySelector('input[name="cor"]').value;
+    const preview = document.getElementById('tagPreview');
+    
+    preview.textContent = nome;
+    preview.style.backgroundColor = cor;
+    preview.innerHTML = '<i class="fas fa-tag"></i> ' + nome;
+}
+
+// Event listeners para atualizar preview
+document.addEventListener('DOMContentLoaded', function() {
+    const nomeInput = document.querySelector('input[name="nome"]');
+    const corInput = document.querySelector('input[name="cor"]');
+    
+    nomeInput.addEventListener('input', updateTagPreview);
+    corInput.addEventListener('change', updateTagPreview);
+    
+    // Botões de cor sugerida
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const cor = this.dataset.color;
+            corInput.value = cor;
+            updateTagPreview();
+        });
+    });
+    
+    // Atualizar preview inicial
+    updateTagPreview();
+});
+</script>
+{% endblock %}

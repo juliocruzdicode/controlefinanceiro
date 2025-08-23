@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Conta - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2">Nova Conta</h1>
+        <p class="text-muted">Cadastre uma nova conta bancária, cartão ou forma de pagamento</p>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" id="contaForm">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.nome.label(class="form-label") }}
+                        {{ form.nome(class="form-control") }}
+                        {% if form.nome.errors %}
+                            <div class="text-danger">
+                                {% for error in form.nome.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.descricao.label(class="form-label") }}
+                        {{ form.descricao(class="form-control", rows="3") }}
+                        {% if form.descricao.errors %}
+                            <div class="text-danger">
+                                {% for error in form.descricao.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.tipo.label(class="form-label") }}
+                        {{ form.tipo(class="form-control") }}
+                        {% if form.tipo.errors %}
+                            <div class="text-danger">
+                                {% for error in form.tipo.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.saldo_inicial.label(class="form-label") }}
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            {{ form.saldo_inicial(class="form-control", step="0.01") }}
+                        </div>
+                        {% if form.saldo_inicial.errors %}
+                            <div class="text-danger">
+                                {% for error in form.saldo_inicial.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="text-muted">Saldo inicial da conta (pode ser 0)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.cor.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.cor(class="form-control", type="color") }}
+                            <span class="input-group-text">
+                                <i class="fas fa-palette"></i>
+                            </span>
+                        </div>
+                        {% if form.cor.errors %}
+                            <div class="text-danger">
+                                {% for error in form.cor.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="text-muted">Cor para identificar a conta nos gráficos</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.ativa(class="form-check-input") }}
+                            {{ form.ativa.label(class="form-check-label") }}
+                        </div>
+                        {% if form.ativa.errors %}
+                            <div class="text-danger">
+                                {% for error in form.ativa.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="text-muted">Contas inativas não aparecem nos formulários</small>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('contas') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Salvar Conta
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pré-visualização da conta -->
+<div class="row justify-content-center mt-4">
+    <div class="col-md-6">
+        <div class="card" id="previewCard">
+            <div class="card-header" id="previewHeader" style="background-color: #007bff; color: white;">
+                <h5 class="mb-0" id="previewNome">
+                    <i class="fas fa-university me-2" id="previewIcon"></i>
+                    <span>Nome da Conta</span>
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <h4 class="text-muted">R$ 0,00</h4>
+                <small class="text-muted">Pré-visualização</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Atualizar pré-visualização em tempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const nomeInput = document.getElementById('nome');
+    const tipoSelect = document.getElementById('tipo');
+    const corInput = document.getElementById('cor');
+    const saldoInput = document.getElementById('saldo_inicial');
+    
+    const previewNome = document.getElementById('previewNome').querySelector('span');
+    const previewHeader = document.getElementById('previewHeader');
+    const previewIcon = document.getElementById('previewIcon');
+    const previewCard = document.getElementById('previewCard');
+    
+    function atualizarPreview() {
+        // Atualizar nome
+        const nome = nomeInput.value || 'Nome da Conta';
+        previewNome.textContent = nome;
+        
+        // Atualizar cor
+        const cor = corInput.value || '#007bff';
+        previewHeader.style.backgroundColor = cor;
+        
+        // Atualizar ícone baseado no tipo
+        const tipo = tipoSelect.value;
+        let iconClass = 'fas fa-university';
+        
+        switch(tipo) {
+            case 'corrente':
+                iconClass = 'fas fa-university';
+                break;
+            case 'poupanca':
+                iconClass = 'fas fa-piggy-bank';
+                break;
+            case 'cartao_credito':
+            case 'cartao_debito':
+                iconClass = 'fas fa-credit-card';
+                break;
+            case 'dinheiro':
+                iconClass = 'fas fa-money-bill';
+                break;
+            case 'investimento':
+                iconClass = 'fas fa-chart-line';
+                break;
+            default:
+                iconClass = 'fas fa-wallet';
+        }
+        
+        previewIcon.className = iconClass + ' me-2';
+    }
+    
+    // Eventos para atualizar preview
+    nomeInput.addEventListener('input', atualizarPreview);
+    tipoSelect.addEventListener('change', atualizarPreview);
+    corInput.addEventListener('input', atualizarPreview);
+    
+    // Atualização inicial
+    atualizarPreview();
+});
+</script>
+{% endblock %}

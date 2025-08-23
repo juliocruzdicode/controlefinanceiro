@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400px" height="300px" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient7" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d6efd" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#0d6efd" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Mountain peak representing achievement -->
+  <polygon points="50,240 200,80 350,240" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  
+  <!-- Smaller peaks in front -->
+  <polygon points="80,240 150,160 220,240" fill="#0d6efd" opacity="0.1" stroke="#0d6efd" stroke-width="1"/>
+  <polygon points="180,240 250,140 320,240" fill="#0d6efd" opacity="0.2" stroke="#0d6efd" stroke-width="1"/>
+  
+  <!-- Flag at the top -->
+  <line x1="200" y1="80" x2="200" y2="40" stroke="#0d6efd" stroke-width="2"/>
+  <polygon points="200,40 230,50 200,60" fill="#0d6efd"/>
+  
+  <!-- Person climbing -->
+  <circle cx="150" cy="180" r="10" fill="#0d6efd"/>
+  <line x1="150" y1="190" x2="150" y2="210" stroke="#0d6efd" stroke-width="2"/>
+  <line x1="150" y1="195" x2="135" y2="205" stroke="#0d6efd" stroke-width="2"/>
+  <line x1="150" y1="195" x2="165" y2="205" stroke="#0d6efd" stroke-width="2"/>
+  <line x1="150" y1="210" x2="140" y2="225" stroke="#0d6efd" stroke-width="2"/>
+  <line x1="150" y1="210" x2="160" y2="225" stroke="#0d6efd" stroke-width="2"/>
+  
+  <!-- Path with steps -->
+  <path d="M120,240 L140,220 L160,220 L180,200 L200,200 L220,180 L240,180 L260,160 L280,160 L300,140 L320,140 L350,110" 
+        fill="none" stroke="#0d6efd" stroke-width="2" stroke-dasharray="5,5"/>
+  
+  <!-- Motivational stars -->
+  <polygon points="100,100 105,90 110,100 120,105 110,110 105,120 100,110 90,105" fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+  <polygon points="300,100 305,90 310,100 320,105 310,110 305,120 300,110 290,105" fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+  <polygon points="200,30 203,20 206,30 216,33 206,36 203,46 200,36 190,33" fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+  
+  <!-- Trophy at the summit -->
+  <path d="M190,85 L210,85 L210,95 C210,105 220,105 220,95 L220,80 L180,80 L180,95 C180,105 190,105 190,95 Z" 
+        fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+  <rect x="195" y="95" width="10" height="15" fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+  <ellipse cx="200" cy="115" rx="15" ry="5" fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+</svg>

@@ -1,0 +1,55 @@
+# Docker Compose simplificado para desenvolvimento
+
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: controle_financeiro_db_dev
+    environment:
+      POSTGRES_DB: controle_financeiro
+      POSTGRES_USER: controle_financeiro
+      POSTGRES_PASSWORD: senha_dev_123
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - dev_network
+
+  # Aplicação Flask em modo desenvolvimento
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: controle_financeiro_app_dev
+    environment:
+      SECRET_KEY: dev-key-not-for-production
+      DEBUG: "true"
+      DATABASE_TYPE: postgresql
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: controle_financeiro
+      POSTGRES_USER: controle_financeiro
+      POSTGRES_PASSWORD: senha_dev_123
+      ITEMS_PER_PAGE: 10
+      SESSION_COOKIE_SECURE: "false"
+      PORT: 5005
+    ports:
+      - "3000:5005"
+    volumes:
+      - .:/app
+      - app_dev_data:/app/instance
+    depends_on:
+      - postgres
+    networks:
+      - dev_network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  app_dev_data:
+    driver: local
+
+networks:
+  dev_network:
+    driver: bridge

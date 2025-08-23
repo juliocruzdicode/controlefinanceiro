@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Códigos de Backup - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header text-center bg-warning text-dark">
+                <h4><i class="fas fa-key"></i> Códigos de Backup Gerados</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <h5><i class="fas fa-exclamation-triangle"></i> Importante!</h5>
+                    <p class="mb-0">
+                        Salve estes códigos em um local seguro. Cada código só pode ser usado uma vez.
+                        Use-os caso perca acesso ao seu aplicativo autenticador.
+                    </p>
+                </div>
+                
+                <div class="row">
+                    {% for code in codes %}
+                    <div class="col-md-6 mb-2">
+                        <div class="backup-code">
+                            <code class="user-select-all">{{ code }}</code>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mt-4 text-center">
+                    <button onclick="printCodes()" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                    <button onclick="copyCodes()" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-copy"></i> Copiar Todos
+                    </button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-success">
+                        <i class="fas fa-check"></i> Continuar
+                    </a>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="alert alert-info">
+                        <small>
+                            <strong>Dica:</strong> Guarde estes códigos separados do dispositivo que contém 
+                            seu aplicativo autenticador para máxima segurança.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.backup-code {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    border: 2px dashed #dee2e6;
+}
+
+.backup-code code {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    background: none;
+    color: #495057;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+@media print {
+    .btn, .alert-info {
+        display: none;
+    }
+    
+    .backup-code {
+        background: white;
+        border: 1px solid #000;
+    }
+}
+</style>
+
+<script>
+function printCodes() {
+    window.print();
+}
+
+function copyCodes() {
+    const codes = [{% for code in codes %}'{{ code }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+    const text = codes.join('\n');
+    
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Códigos copiados para a área de transferência!');
+    }).catch(() => {
+        // Fallback para navegadores mais antigos
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Códigos copiados para a área de transferência!');
+    });
+}
+</script>
+{% endblock %}

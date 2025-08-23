@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400px" height="300px" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d6efd" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#0d6efd" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Emergency fund - piggy bank -->
+  <ellipse cx="200" cy="170" rx="100" ry="80" fill="#0d6efd" opacity="0.2" stroke="#0d6efd" stroke-width="2"/>
+  <ellipse cx="200" cy="150" rx="90" ry="70" fill="#ffffff" stroke="#0d6efd" stroke-width="2"/>
+  
+  <!-- Piggy bank features -->
+  <circle cx="160" cy="130" r="10" fill="#0d6efd" opacity="0.5"/>
+  <circle cx="240" cy="130" r="10" fill="#0d6efd" opacity="0.5"/>
+  <ellipse cx="200" cy="150" rx="20" ry="15" fill="#0d6efd" opacity="0.3"/>
+  
+  <!-- Tail -->
+  <path d="M290,150 C310,140 320,160 310,170" fill="none" stroke="#0d6efd" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Slot at the top -->
+  <rect x="180" y="90" width="40" height="10" rx="5" fill="#0d6efd"/>
+  
+  <!-- Coins falling in -->
+  <circle cx="200" cy="60" r="15" fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+  <text x="200" y="65" font-family="Arial" font-size="14" fill="#0d6efd" text-anchor="middle">$</text>
+  
+  <circle cx="180" cy="40" r="12" fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+  <text x="180" y="45" font-family="Arial" font-size="12" fill="#0d6efd" text-anchor="middle">$</text>
+  
+  <circle cx="220" cy="40" r="12" fill="#ffd700" stroke="#0d6efd" stroke-width="1"/>
+  <text x="220" y="45" font-family="Arial" font-size="12" fill="#0d6efd" text-anchor="middle">$</text>
+  
+  <!-- Shield symbol for emergency protection -->
+  <path d="M200,200 L170,180 L170,140 L200,120 L230,140 L230,180 Z" fill="none" stroke="#0d6efd" stroke-width="2"/>
+  <text x="200" y="170" font-family="Arial" font-size="18" fill="#0d6efd" text-anchor="middle">E</text>
+</svg>

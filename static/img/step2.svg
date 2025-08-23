@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400px" height="300px" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d6efd" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#0d6efd" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Goal/target -->
+  <circle cx="200" cy="150" r="100" fill="none" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="200" cy="150" r="80" fill="none" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="200" cy="150" r="60" fill="none" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="200" cy="150" r="40" fill="none" stroke="#0d6efd" stroke-width="2"/>
+  <circle cx="200" cy="150" r="20" fill="#0d6efd"/>
+  
+  <!-- Arrow hitting the target -->
+  <line x1="100" y1="70" x2="190" y2="140" stroke="#0d6efd" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="190,140 175,125 185,115" fill="#0d6efd"/>
+  
+  <!-- SMART text around the circle -->
+  <text x="120" y="150" font-family="Arial" font-size="16" fill="#0d6efd" font-weight="bold">S</text>
+  <text x="200" y="80" font-family="Arial" font-size="16" fill="#0d6efd" font-weight="bold">M</text>
+  <text x="280" y="150" font-family="Arial" font-size="16" fill="#0d6efd" font-weight="bold">A</text>
+  <text x="200" y="230" font-family="Arial" font-size="16" fill="#0d6efd" font-weight="bold">R</text>
+  <text x="130" y="200" font-family="Arial" font-size="16" fill="#0d6efd" font-weight="bold">T</text>
+  
+  <!-- Dollar sign in the center -->
+  <text x="200" y="155" font-family="Arial" font-size="18" fill="#ffffff" text-anchor="middle">$</text>
+</svg>

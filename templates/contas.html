@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Contas - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h1 class="h2">Gerenciar Contas</h1>
+        <p class="text-muted">Organize suas contas bancárias, cartões e dinheiro</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{{ url_for('nova_conta') }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Nova Conta
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    {% for conta in contas %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center" style="background-color: {{ conta.cor }}; color: white;">
+                <div class="flex-grow-1">
+                    <h5 class="card-title mb-0">
+                        {% if conta.tipo.value == 'corrente' %}
+                            <i class="fas fa-university me-2"></i>
+                        {% elif conta.tipo.value == 'poupanca' %}
+                            <i class="fas fa-piggy-bank me-2"></i>
+                        {% elif conta.tipo.value == 'cartao_credito' %}
+                            <i class="fas fa-credit-card me-2"></i>
+                        {% elif conta.tipo.value == 'cartao_debito' %}
+                            <i class="fas fa-credit-card me-2"></i>
+                        {% elif conta.tipo.value == 'dinheiro' %}
+                            <i class="fas fa-money-bill me-2"></i>
+                        {% elif conta.tipo.value == 'investimento' %}
+                            <i class="fas fa-chart-line me-2"></i>
+                        {% else %}
+                            <i class="fas fa-wallet me-2"></i>
+                        {% endif %}
+                        {{ conta.nome }}
+                    </h5>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('editar_conta', conta_id=conta.id) }}">
+                                <i class="fas fa-edit me-2"></i>Editar
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="#" onclick="deletarConta({{ conta.id }}, '{{ conta.nome }}')">
+                                <i class="fas fa-trash me-2"></i>Excluir
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if conta.descricao %}
+                <p class="card-text text-muted">{{ conta.descricao }}</p>
+                {% endif %}
+                
+                <div class="row text-center">
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <h4 class="{% if conta.saldo_atual >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                R$ {{ "%.2f"|format(conta.saldo_atual) }}
+                            </h4>
+                            <small class="text-muted">Saldo Atual</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="text-success fw-bold">
+                                R$ {{ "%.2f"|format(conta.total_receitas) }}
+                            </div>
+                            <small class="text-muted">Receitas</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <div class="text-danger fw-bold">
+                                R$ {{ "%.2f"|format(conta.total_despesas) }}
+                            </div>
+                            <small class="text-muted">Despesas</small>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <div class="col-12">
+                        <small class="text-muted">
+                            <strong>Tipo:</strong> 
+                            {% if conta.tipo.value == 'corrente' %}Conta Corrente
+                            {% elif conta.tipo.value == 'poupanca' %}Conta Poupança
+                            {% elif conta.tipo.value == 'cartao_credito' %}Cartão de Crédito
+                            {% elif conta.tipo.value == 'cartao_debito' %}Cartão de Débito
+                            {% elif conta.tipo.value == 'dinheiro' %}Dinheiro
+                            {% elif conta.tipo.value == 'investimento' %}Investimento
+                            {% else %}Outros{% endif %}
+                        </small>
+                        <br>
+                        <small class="text-muted">
+                            <strong>Transações:</strong> {{ conta.transacoes|length }}
+                        </small>
+                        <br>
+                        {% if not conta.ativa %}
+                        <span class="badge bg-secondary">Inativa</span>
+                        {% else %}
+                        <span class="badge bg-success">Ativa</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    
+    {% if not contas %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="fas fa-university fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">Nenhuma conta cadastrada</h4>
+            <p class="text-muted">Comece criando sua primeira conta bancária ou cartão.</p>
+            <a href="{{ url_for('nova_conta') }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Criar Primeira Conta
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deletarConta(contaId, nomeConta) {
+    if (confirm(`Tem certeza que deseja excluir a conta "${nomeConta}"?\n\nEsta ação não pode ser desfeita e só é possível se não houver transações associadas.`)) {
+        fetch(`/api/conta/${contaId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Recarregar a página para mostrar as mudanças
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao excluir conta');
+        });
+    }
+}
+
+// Fix para dropdown z-index em cards
+document.addEventListener('DOMContentLoaded', function() {
+    // Encontrar todos os dropdowns em cards
+    const dropdowns = document.querySelectorAll('.card .dropdown');
+    
+    dropdowns.forEach(function(dropdown) {
+        const card = dropdown.closest('.card');
+        const toggleButton = dropdown.querySelector('.dropdown-toggle');
+        const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+        
+        // Adicionar event listeners para mostrar/ocultar dropdown
+        dropdown.addEventListener('show.bs.dropdown', function() {
+            card.classList.add('dropdown-open');
+            
+            // Garantir que o dropdown tenha a posição correta
+            setTimeout(() => {
+                if (dropdownMenu) {
+                    dropdownMenu.style.zIndex = '1050';
+                    dropdownMenu.style.position = 'absolute';
+                }
+            }, 10);
+        });
+        
+        dropdown.addEventListener('hide.bs.dropdown', function() {
+            card.classList.remove('dropdown-open');
+        });
+        
+        // Reposicionar dropdown se necessário
+        dropdown.addEventListener('shown.bs.dropdown', function() {
+            if (dropdownMenu) {
+                const rect = dropdownMenu.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                
+                // Se o dropdown sair da tela, ajustar posição
+                if (rect.bottom > viewportHeight) {
+                    dropdownMenu.classList.add('dropdown-menu-end', 'dropup');
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Controle Financeiro — Finanças em Ordem, Vida em Progresso{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" />
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<header class="landing-hero d-flex align-items-center">
+  <div class="container py-6">
+    <div class="row align-items-center">
+      <div class="col-lg-7" data-aos="fade-right" data-aos-duration="1000">
+        <h1 class="display-4">Finanças em Ordem, <br>Vida em Progresso</h1>
+        <p class="lead mb-4">Organize suas finanças, estabeleça metas claras e construa um futuro financeiro sólido com nosso sistema completo de controle financeiro.</p>
+        <div class="d-flex gap-2">
+          {% if current_user.is_authenticated %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-lg">Ir para o painel</a>
+          {% else %}
+            <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">Criar conta grátis</a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">Entrar</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-lg-5 text-center d-none d-lg-block" data-aos="fade-left" data-aos-duration="1000" data-aos-delay="200">
+        <div class="illustration-container">
+          <img src="{{ url_for('static', filename='img/landing-illustration.svg') }}" alt="Ilustração" class="img-fluid illustration-image">
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Intro Section -->
+<section class="py-5 bg-light">
+  <div class="container">
+    <div class="row justify-content-center mb-5">
+      <div class="col-lg-8 text-center" data-aos="fade-up">
+        <h2 class="mb-4">O caminho para o equilíbrio financeiro</h2>
+        <p class="lead">Para alcançar o equilíbrio de "finanças em ordem, vida em progresso", é necessário organizar e controlar receitas e despesas, estabelecer metas claras e realistas, criar uma reserva de emergência e investir parte do dinheiro para fazê-lo render. O acompanhamento regular do plano financeiro, a busca por educação financeira e o desenvolvimento de um consumo consciente também são cruciais para a construção de uma vida financeira estável e próspera.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 Steps Section -->
+<section class="py-5">
+  <div class="container">
+    <h2 class="text-center mb-5" data-aos="fade-up">7 Passos para o Sucesso Financeiro</h2>
+    
+    <!-- Step 1 -->
+    <div class="row align-items-center mb-5" data-aos="fade-up">
+      <div class="col-md-6 order-md-2">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="display-4 text-primary me-3">1</span>
+              <h3 class="card-title mb-0">Entenda sua Realidade Financeira</h3>
+            </div>
+            <p class="card-text"><strong>Registre ganhos e gastos:</strong> Anote todas as suas receitas e despesas para ter uma visão clara de para onde o seu dinheiro está indo.</p>
+            <p class="card-text"><strong>Analise os dados:</strong> Após registrar, identifique os principais gastos e áreas onde pode fazer ajustes para otimizar o orçamento.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 order-md-1 text-center mb-4 mb-md-0">
+        <img src="{{ url_for('static', filename='img/step1.svg') }}" alt="Entenda sua Realidade Financeira" class="img-fluid" style="max-height: 250px;">
+      </div>
+    </div>
+    
+    <!-- Step 2 -->
+    <div class="row align-items-center mb-5" data-aos="fade-up" data-aos-delay="100">
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="display-4 text-primary me-3">2</span>
+              <h3 class="card-title mb-0">Defina Metas Financeiras</h3>
+            </div>
+            <p class="card-text"><strong>Estabeleça objetivos:</strong> Defina metas financeiras específicas, mensuráveis, alcançáveis, relevantes e com prazo (SMART) para dar propósito ao seu esforço.</p>
+            <p class="card-text"><strong>Exemplos:</strong> Reservar para a reforma da casa, fazer uma viagem, ou garantir a aposentadoria.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 text-center mb-4 mb-md-0">
+        <img src="{{ url_for('static', filename='img/step2.svg') }}" alt="Defina Metas Financeiras" class="img-fluid" style="max-height: 250px;">
+      </div>
+    </div>
+    
+    <!-- Step 3 -->
+    <div class="row align-items-center mb-5" data-aos="fade-up" data-aos-delay="200">
+      <div class="col-md-6 order-md-2">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="display-4 text-primary me-3">3</span>
+              <h3 class="card-title mb-0">Crie um Orçamento Eficiente</h3>
+            </div>
+            <p class="card-text"><strong>Monte o orçamento:</strong> Com base na sua realidade financeira e metas, crie um orçamento mensal, separando verba para necessidades, desejos e poupança/investimento.</p>
+            <p class="card-text"><strong>Utilize ferramentas:</strong> Use aplicativos ou planilhas para facilitar o controle do orçamento no dia a dia.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 order-md-1 text-center mb-4 mb-md-0">
+        <img src="{{ url_for('static', filename='img/step3.svg') }}" alt="Crie um Orçamento Eficiente" class="img-fluid" style="max-height: 250px;">
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="row align-items-center mb-5" data-aos="fade-up" data-aos-delay="300">
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="display-4 text-primary me-3">4</span>
+              <h3 class="card-title mb-0">Construa sua Reserva de Emergência</h3>
+            </div>
+            <p class="card-text"><strong>Poupe um valor fixo:</strong> Separe um valor mensalmente para criar um fundo de emergência.</p>
+            <p class="card-text"><strong>Objetivo:</strong> Essa reserva cobrirá despesas inesperadas e evitará que você precise recorrer a dívidas em caso de imprevistos.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 text-center mb-4 mb-md-0">
+        <img src="{{ url_for('static', filename='img/step4.svg') }}" alt="Construa sua Reserva de Emergência" class="img-fluid" style="max-height: 250px;">
+      </div>
+    </div>
+    
+    <!-- Step 5 -->
+    <div class="row align-items-center mb-5" data-aos="fade-up" data-aos-delay="400">
+      <div class="col-md-6 order-md-2">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="display-4 text-primary me-3">5</span>
+              <h3 class="card-title mb-0">Invista seu Dinheiro</h3>
+            </div>
+            <p class="card-text"><strong>Faça o dinheiro render:</strong> Não basta guardar o dinheiro; é preciso investir para que ele traga retornos e garanta crescimento financeiro.</p>
+            <p class="card-text"><strong>Busque conhecimento:</strong> Informe-se sobre o mercado financeiro para tomar decisões mais seguras e lucrativas.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 order-md-1 text-center mb-4 mb-md-0">
+        <img src="{{ url_for('static', filename='img/step5.svg') }}" alt="Invista seu Dinheiro" class="img-fluid" style="max-height: 250px;">
+      </div>
+    </div>
+    
+    <!-- Step 6 -->
+    <div class="row align-items-center mb-5" data-aos="fade-up" data-aos-delay="500">
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="display-4 text-primary me-3">6</span>
+              <h3 class="card-title mb-0">Desenvolva Hábitos Financeiros Saudáveis</h3>
+            </div>
+            <p class="card-text"><strong>Consumo consciente:</strong> Avalie o valor real do que você compra e evite gastos por impulso.</p>
+            <p class="card-text"><strong>Revise o planejamento:</strong> A vida é dinâmica; revise seu planejamento financeiro periodicamente para adaptá-lo às mudanças.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 text-center mb-4 mb-md-0">
+        <img src="{{ url_for('static', filename='img/step6.svg') }}" alt="Desenvolva Hábitos Financeiros Saudáveis" class="img-fluid" style="max-height: 250px;">
+      </div>
+    </div>
+    
+    <!-- Step 7 -->
+    <div class="row align-items-center" data-aos="fade-up" data-aos-delay="600">
+      <div class="col-md-6 order-md-2">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="display-4 text-primary me-3">7</span>
+              <h3 class="card-title mb-0">Mantenha a Motivação e a Resiliência</h3>
+            </div>
+            <p class="card-text"><strong>Não desista:</strong> É normal haver imprevistos ou períodos de desânimo. Se uma meta ficar difícil, ajuste o plano em vez de desistir.</p>
+            <p class="card-text"><strong>Celebre conquistas:</strong> Reconheça e comemore cada passo dado na organização financeira para manter-se motivado.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 order-md-1 text-center mb-4 mb-md-0">
+        <img src="{{ url_for('static', filename='img/step7.svg') }}" alt="Mantenha a Motivação e a Resiliência" class="img-fluid" style="max-height: 250px;">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5 bg-light">
+  <div class="container">
+    <h2 class="text-center mb-5" data-aos="fade-up">Recursos para seu Sucesso Financeiro</h2>
+    <div class="row g-4">
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body text-center p-4">
+            <div class="icon-wrapper mb-3">
+              <i class="fas fa-chart-line text-primary fa-3x"></i>
+            </div>
+            <h4 class="card-title">Acompanhamento Completo</h4>
+            <p class="card-text">Registre receitas e despesas com categorias, contas e tags. Monitore seu progresso em tempo real com gráficos intuitivos.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body text-center p-4">
+            <div class="icon-wrapper mb-3">
+              <i class="fas fa-bullseye text-primary fa-3x"></i>
+            </div>
+            <h4 class="card-title">Gestão de Metas</h4>
+            <p class="card-text">Estabeleça objetivos financeiros claros e acompanhe seu progresso. Visualize projeções para saber quando alcançará suas metas.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body text-center p-4">
+            <div class="icon-wrapper mb-3">
+              <i class="fas fa-shield-alt text-primary fa-3x"></i>
+            </div>
+            <h4 class="card-title">Segurança Avançada</h4>
+            <p class="card-text">Seus dados financeiros protegidos com criptografia avançada. Autenticação em duas etapas para maior segurança.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Call to Action -->
+<section class="py-5 bg-primary text-white text-center">
+  <div class="container" data-aos="fade-up">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <h2 class="mb-4">Comece sua jornada para o equilíbrio financeiro hoje</h2>
+        <p class="lead mb-4">Crie sua conta gratuitamente e tenha acesso a todas as ferramentas para organizar suas finanças e transformar sua vida.</p>
+        <div class="d-flex justify-content-center gap-3">
+          {% if current_user.is_authenticated %}
+            <a href="{{ url_for('dashboard') }}" class="btn btn-light btn-lg">Ir para o painel</a>
+          {% else %}
+            <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">Criar conta grátis</a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">Entrar</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-4 bg-dark text-white">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6 text-center text-md-start">
+        <h5>Controle Financeiro</h5>
+        <p class="mb-0">Finanças em Ordem, Vida em Progresso</p>
+      </div>
+      <div class="col-md-6 text-center text-md-end">
+        <p class="mb-0">© {{ now().year }} Controle Financeiro — Desenvolvido com <i class="fas fa-heart text-danger"></i> e Flask</p>
+      </div>
+    </div>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    AOS.init({
+      once: true,
+      duration: 800
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Transação Recorrente{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h1 class="h2 mb-4">Nova Transação Recorrente</h1>
+        
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.descricao.label(class="form-label") }}
+                    {{ form.descricao(class="form-control") }}
+                    {% if form.descricao.errors %}
+                        <div class="text-danger small">
+                            {% for error in form.descricao.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    {{ form.valor.label(class="form-label") }}
+                    <div class="input-group">
+                        <span class="input-group-text">R$</span>
+                        {{ form.valor(class="form-control", step="0.01") }}
+                    </div>
+                    {% if form.valor.errors %}
+                        <div class="text-danger small">
+                            {% for error in form.valor.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.tipo.label(class="form-label") }}
+                    {{ form.tipo(class="form-select") }}
+                    {% if form.tipo.errors %}
+                        <div class="text-danger small">
+                            {% for error in form.tipo.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        {{ form.categoria_id.label(class="form-label") }}
+                        {{ form.categoria_id(class="form-select") }}
+                        {% if form.categoria_id.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.categoria_id.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        {{ form.conta_id.label(class="form-label") }}
+                        {{ form.conta_id(class="form-select") }}
+                        {% if form.conta_id.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.conta_id.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            </div>
+            
+            <div class="mb-3">
+                {{ form.tipo_recorrencia.label(class="form-label") }}
+                {{ form.tipo_recorrencia(class="form-select", onchange="toggleRecorrenciaOptions()") }}
+                {% if form.tipo_recorrencia.errors %}
+                    <div class="text-danger small">
+                        {% for error in form.tipo_recorrencia.errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div id="recorrencia-options" style="display: none;">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title">Configurações de Recorrência</h6>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.data_inicio.label(class="form-label") }}
+                                {{ form.data_inicio(class="form-control") }}
+                                {% if form.data_inicio.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.data_inicio.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.data_fim.label(class="form-label") }}
+                                {{ form.data_fim(class="form-control") }}
+                                <small class="form-text text-muted">Deixe em branco para transação contínua</small>
+                                {% if form.data_fim.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.data_fim.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.is_parcelada(class="form-check-input", onchange="toggleParcelas()") }}
+                                {{ form.is_parcelada.label(class="form-check-label") }}
+                            </div>
+                            <small class="form-text text-muted">
+                                Marque se quiser definir um número específico de parcelas
+                            </small>
+                        </div>
+                        
+                        <div id="parcelas-input" style="display: none;">
+                            {{ form.total_parcelas.label(class="form-label") }}
+                            {{ form.total_parcelas(class="form-control", min="1") }}
+                            {% if form.total_parcelas.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.total_parcelas.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                <a href="{{ url_for('transacoes_recorrentes') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Criar Transação Recorrente
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleRecorrenciaOptions() {
+    const tipoRecorrencia = document.querySelector('select[name="tipo_recorrencia"]').value;
+    const recorrenciaOptions = document.getElementById('recorrencia-options');
+    
+    if (tipoRecorrencia === 'unica') {
+        recorrenciaOptions.style.display = 'none';
+    } else {
+        recorrenciaOptions.style.display = 'block';
+    }
+}
+
+function toggleParcelas() {
+    const isParcelada = document.querySelector('input[name="is_parcelada"]').checked;
+    const parcelasInput = document.getElementById('parcelas-input');
+    
+    if (isParcelada) {
+        parcelasInput.style.display = 'block';
+    } else {
+        parcelasInput.style.display = 'none';
+        document.querySelector('input[name="total_parcelas"]').value = '';
+    }
+}
+
+// Executar na inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    toggleRecorrenciaOptions();
+    toggleParcelas();
+});
+</script>
+{% endblock %}

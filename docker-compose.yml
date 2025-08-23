@@ -1,0 +1,99 @@
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: controle_financeiro_db
+    environment:
+      POSTGRES_DB: controle_financeiro
+      POSTGRES_USER: controle_financeiro
+      POSTGRES_PASSWORD: senha_segura_aqui
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - controle_financeiro_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U controle_financeiro -d controle_financeiro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicação Flask
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: controle_financeiro_app
+    environment:
+      # Configurações gerais
+      SECRET_KEY: sua-chave-secreta-muito-segura-aqui-mude-em-producao
+      DEBUG: "false"
+      
+      # Configurações do banco
+      DATABASE_TYPE: postgresql
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: controle_financeiro
+      POSTGRES_USER: controle_financeiro
+      POSTGRES_PASSWORD: senha_segura_aqui
+      
+      # Configurações de email (ajuste conforme necessário)
+      MAIL_SERVER: smtp.gmail.com
+      MAIL_PORT: 587
+      MAIL_USE_TLS: "true"
+      MAIL_USERNAME: seu-email@gmail.com
+      MAIL_PASSWORD: sua-senha-de-app
+      MAIL_DEFAULT_SENDER: seu-email@gmail.com
+      
+      # Configurações de interface
+      ITEMS_PER_PAGE: 10
+      
+      # Configurações de produção
+      SESSION_COOKIE_SECURE: "true"
+    ports:
+      - "3000:5000"
+    volumes:
+      - app_data:/app/instance
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - controle_financeiro_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx (opcional - para produção)
+  nginx:
+    image: nginx:alpine
+    container_name: controle_financeiro_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+    networks:
+      - controle_financeiro_network
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+    driver: local
+  app_data:
+    driver: local
+
+networks:
+  controle_financeiro_network:
+    driver: bridge

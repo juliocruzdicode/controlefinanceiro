@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmar Adição de Categorias Padrão{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4>
+                        <i class="fas fa-tags"></i> 
+                        Confirmar Adição de Categorias Padrão
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Atenção!</strong> Você está prestes a adicionar categorias padrão.
+                    </div>
+                    
+                    {% if acao == 'individual' %}
+                        <p>Você está prestes a adicionar categorias padrão para o usuário <strong>{{ usuario.username }}</strong>.</p>
+                    {% else %}
+                        <p>Você está prestes a adicionar categorias padrão para <strong>TODOS OS USUÁRIOS</strong> do sistema.</p>
+                    {% endif %}
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Nota:</strong> 
+                        <ul>
+                            <li>As categorias já existentes não serão duplicadas</li>
+                            <li>Categorias com nomes iguais (ignorando maiúsculas/minúsculas) serão consideradas duplicadas</li>
+                            <li>Novos usuários já receberão estas categorias automaticamente</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{{ url }}" class="btn btn-success">
+                            <i class="fas fa-check"></i> Sim, adicionar categorias padrão
+                        </a>
+                        <a href="{{ url_for('admin') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

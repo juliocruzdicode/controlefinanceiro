@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Tags - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2"><i class="fas fa-tags me-2"></i>Gerenciar Tags</h1>
+                <p class="text-muted">Organize suas transações com tags personalizadas</p>
+            </div>
+            <a href="{{ url_for('nova_tag') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Nova Tag
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas das Tags -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h5>Total de Tags</h5>
+                <h4>{{ stats.total_tags }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h5>Tags Ativas</h5>
+                <h4>{{ stats.tags_ativas }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h5>Tags Inativas</h5>
+                <h4>{{ stats.tags_inativas }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h5>Tags em Uso</h5>
+                <h4>{{ stats.tags_em_uso }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Tags -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>Suas Tags
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if tags %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tag</th>
+                        <th>Descrição</th>
+                        <th class="text-center">Cor</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Uso</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tag in tags %}
+                    <tr class="{% if not tag.ativa %}table-secondary{% endif %}">
+                        <td>
+                            <span class="badge" style="background-color: {{ tag.cor }}; font-size: 1em;">
+                                <i class="fas fa-tag"></i> {{ tag.nome }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ tag.descricao or '-' }}
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div class="color-preview me-2" 
+                                     style="width: 20px; height: 20px; background-color: {{ tag.cor }}; border-radius: 3px; border: 1px solid #dee2e6;">
+                                </div>
+                                <small class="text-muted">{{ tag.cor }}</small>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-{{ 'success' if tag.ativa else 'secondary' }}">
+                                {{ 'Ativa' if tag.ativa else 'Inativa' }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            {% if tag.total_transacoes > 0 %}
+                                <span class="badge bg-info">
+                                    {{ tag.total_transacoes }} transação{{ 'ões' if tag.total_transacoes != 1 else '' }}
+                                </span>
+                                <br>
+                                <small class="text-muted">
+                                    R$ {{ "%.2f"|format(tag.total_valor) }}
+                                </small>
+                            {% else %}
+                                <span class="text-muted">Não utilizada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('editar_tag', tag_id=tag.id) }}" 
+                                   class="btn btn-outline-primary" 
+                                   title="Editar Tag">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                
+                                <button type="button" 
+                                        class="btn btn-outline-{{ 'warning' if tag.ativa else 'success' }}" 
+                                        title="{{ 'Desativar' if tag.ativa else 'Ativar' }} Tag"
+                                        onclick="toggleTagStatus({{ tag.id }}, '{{ tag.nome }}', {{ 'true' if tag.ativa else 'false' }})">
+                                    <i class="fas fa-{{ 'eye-slash' if tag.ativa else 'eye' }}"></i>
+                                </button>
+                                
+                                {% if tag.total_transacoes == 0 %}
+                                <button type="button" 
+                                        class="btn btn-outline-danger" 
+                                        title="Excluir Tag"
+                                        onclick="excluirTag({{ tag.id }}, '{{ tag.nome }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% else %}
+                                <button type="button" 
+                                        class="btn btn-outline-secondary" 
+                                        title="Não é possível excluir - tag está em uso"
+                                        disabled>
+                                    <i class="fas fa-lock"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">Nenhuma tag criada ainda</h5>
+            <p class="text-muted">Crie sua primeira tag para organizar melhor suas transações</p>
+            <a href="{{ url_for('nova_tag') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Criar Primeira Tag
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Função para alternar status da tag
+function toggleTagStatus(tagId, tagNome, isAtiva) {
+    const action = isAtiva ? 'desativar' : 'ativar';
+    
+    if (confirm(`Deseja realmente ${action} a tag "${tagNome}"?`)) {
+        fetch(`/toggle-tag-status/${tagId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Recarregar página para atualizar interface
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao alterar status da tag');
+        });
+    }
+}
+
+// Função para excluir tag
+function excluirTag(tagId, tagNome) {
+    if (confirm(`Deseja realmente excluir a tag "${tagNome}"?\n\nEsta ação não pode ser desfeita!`)) {
+        fetch(`/excluir-tag/${tagId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Recarregar página para atualizar interface
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao excluir tag');
+        });
+    }
+}
+</script>
+{% endblock %}

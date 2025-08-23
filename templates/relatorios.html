@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2">Relatórios Financeiros</h1>
+        <p class="text-muted">Análise detalhada das suas finanças</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Filtros</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="ano" class="form-label">Ano</label>
+                        <select class="form-control" id="ano" name="ano">
+                            {% for ano_opt in anos_disponiveis %}
+                            <option value="{{ ano_opt }}" {% if ano_opt == ano %}selected{% endif %}>{{ ano_opt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="tipo" class="form-label">Tipo</label>
+                        <select class="form-control" id="tipo" name="tipo">
+                            <option value="todos" {% if tipo == 'todos' %}selected{% endif %}>Todos</option>
+                            <option value="receita" {% if tipo == 'receita' %}selected{% endif %}>Receitas</option>
+                            <option value="despesa" {% if tipo == 'despesa' %}selected{% endif %}>Despesas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="categoria" class="form-label">Categoria</label>
+                        <select class="form-control" id="categoria" name="categoria">
+                            <option value="">Todas</option>
+                            {% for cat in todas_categorias %}
+                            <option value="{{ cat.id }}" {% if categoria == cat.id|string %}selected{% endif %}>
+                                {{ cat.nome_completo }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="conta" class="form-label">Conta</label>
+                        <select class="form-control" id="conta" name="conta">
+                            <option value="">Todas</option>
+                            {% for conta_opt in todas_contas %}
+                            <option value="{{ conta_opt.id }}" {% if conta == conta_opt.id|string %}selected{% endif %}>
+                                {{ conta_opt.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resumo Geral -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h5>Total Receitas</h5>
+                <h4>R$ {{ "%.2f"|format(total_receitas|float) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h5>Total Despesas</h5>
+                <h4>R$ {{ "%.2f"|format(total_despesas|float) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card {% if saldo_geral >= 0 %}bg-info{% else %}bg-warning{% endif %} text-white">
+            <div class="card-body text-center">
+                <h5>Saldo Geral</h5>
+                <h4>R$ {{ "%.2f"|format(saldo_geral|float) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h5>Transações</h5>
+                <h4>{{ total_transacoes }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Relatório Principal - Estilo Planilha -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-table"></i> Relatório Detalhado por Categoria e Mês - {{ ano }}</h5>
+                <button class="btn btn-sm btn-success" onclick="exportarExcel()">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 70vh; overflow-x: auto; overflow-y: auto;">
+                    <table class="table table-sm table-bordered mb-0" id="relatorioTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="sticky-left" style="min-width: 200px;">Categoria</th>
+                                {% for mes in meses %}
+                                <th class="text-center" style="min-width: 120px;">{{ mes }}</th>
+                                {% endfor %}
+                                <th class="text-center bg-secondary" style="min-width: 120px;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if tipo == 'todos' or tipo == 'receita' %}
+                            <!-- Receitas -->
+                            <tr class="table-success fw-bold">
+                                <td class="sticky-left"><i class="fas fa-plus-circle"></i> RECEITAS</td>
+                                {% for mes in meses %}
+                                <td class="text-end">R$ {{ "%.2f"|format(totais_mensais[mes]['receita']|float) }}</td>
+                                {% endfor %}
+                                <td class="text-end bg-success text-white">R$ {{ "%.2f"|format(total_receitas|float) }}</td>
+                            </tr>
+                            
+                            {% for categoria in categorias_receitas %}
+                            <tr>
+                                <td class="sticky-left ps-3">{{ categoria.nome_completo }}</td>
+                                {% for mes in meses %}
+                                <td class="text-end">
+                                    {% set valor = matriz_dados.get(categoria.id, {}).get(mes, 0) %}
+                                    {% if valor %}
+                                    R$ {{ "%.2f"|format(valor|float) }}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                                <td class="text-end">
+                                    {% set total_cat = categoria.total_receita or 0 %}
+                                    {% if total_cat %}
+                                    R$ {{ "%.2f"|format(total_cat|float) }}
+                                    {% else %}
+                                    <span class="text-muted">R$ 0,00</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            <!-- Espaçador -->
+                            <tr><td colspan="{{ meses|length + 2 }}" class="p-1"></td></tr>
+                            {% endif %}
+
+                            {% if tipo == 'todos' or tipo == 'despesa' %}
+                            <!-- Despesas -->
+                            <tr class="table-danger fw-bold">
+                                <td class="sticky-left"><i class="fas fa-minus-circle"></i> DESPESAS</td>
+                                {% for mes in meses %}
+                                <td class="text-end">R$ {{ "%.2f"|format(totais_mensais[mes]['despesa']|float) }}</td>
+                                {% endfor %}
+                                <td class="text-end bg-danger text-white">R$ {{ "%.2f"|format(total_despesas|float) }}</td>
+                            </tr>
+
+                            {% for categoria in categorias_despesas %}
+                            <tr>
+                                <td class="sticky-left ps-3">{{ categoria.nome_completo }}</td>
+                                {% for mes in meses %}
+                                <td class="text-end">
+                                    {% set valor = matriz_dados.get(categoria.id, {}).get(mes, 0) %}
+                                    {% if valor %}
+                                    R$ {{ "%.2f"|format(valor|float) }}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                                <td class="text-end">
+                                    {% set total_cat = categoria.total_despesa or 0 %}
+                                    {% if total_cat %}
+                                    R$ {{ "%.2f"|format(total_cat|float) }}
+                                    {% else %}
+                                    <span class="text-muted">R$ 0,00</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            <!-- Espaçador -->
+                            <tr><td colspan="{{ meses|length + 2 }}" class="p-1"></td></tr>
+                            {% endif %}
+
+                            {% if tipo == 'todos' %}
+                            <!-- SALDO MENSAL -->
+                            <tr class="table-info fw-bold">
+                                <td class="sticky-left"><i class="fas fa-equals"></i> SALDO MENSAL</td>
+                                {% for mes in meses %}
+                                {% set saldo_mes = (totais_mensais[mes]['receita']|float) - (totais_mensais[mes]['despesa']|float) %}
+                                <td class="text-end {% if saldo_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    R$ {{ "%.2f"|format(saldo_mes) }}
+                                </td>
+                                {% endfor %}
+                                <td class="text-end bg-info text-white">R$ {{ "%.2f"|format(saldo_geral|float) }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Distribuição por Categoria ({% if tipo == 'receita' %}Receitas{% elif tipo == 'despesa' %}Despesas{% else %}Despesas{% endif %})</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoriasChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> Evolução Mensal</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="evolucaoChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS personalizado -->
+<style>
+.sticky-left {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background-color: #ffffff;
+    border-right: 2px solid #dee2e6;
+}
+
+.table-responsive {
+    max-height: 70vh;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+.table th, .table td {
+    white-space: nowrap;
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0,123,255,0.1);
+}
+
+.text-muted {
+    font-size: 0.8em;
+}
+
+#relatorioTable {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Dados dos gráficos
+{% if tipo == 'despesa' or tipo == 'todos' %}
+const categoriasData = [
+    {% for categoria in categorias_despesas %}
+    {
+        nome: "{{ categoria.nome_completo }}",
+        valor: {{ categoria.total_despesa or 0 }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+].filter(item => item.valor > 0);
+{% else %}
+const categoriasData = [
+    {% for categoria in categorias_receitas %}
+    {
+        nome: "{{ categoria.nome_completo }}",
+        valor: {{ categoria.total_receita or 0 }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+].filter(item => item.valor > 0);
+{% endif %}
+
+// Gráfico de pizza - Categorias
+const ctxCategorias = document.getElementById('categoriasChart').getContext('2d');
+new Chart(ctxCategorias, {
+    type: 'doughnut',
+    data: {
+        labels: categoriasData.map(item => item.nome),
+        datasets: [{
+            data: categoriasData.map(item => item.valor),
+            backgroundColor: [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
+                '#FF9FF3', '#54A0FF', '#5F27CD', '#26DE81', '#FD79A8',
+                '#F0932B', '#EB4D4B', '#6C5CE7', '#A29BFE', '#FD79A8'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    boxWidth: 12,
+                    font: {
+                        size: 11
+                    }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const value = context.parsed;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return context.label + ': R$ ' + value.toFixed(2) + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Gráfico de linha - Evolução mensal
+const ctxEvolucao = document.getElementById('evolucaoChart').getContext('2d');
+new Chart(ctxEvolucao, {
+    type: 'line',
+    data: {
+        labels: [{% for mes in meses %}'{{ mes }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+        datasets: [
+        {% if tipo == 'todos' or tipo == 'receita' %}
+        {
+            label: 'Receitas',
+            data: [{% for mes in meses %}{{ totais_mensais[mes]['receita'] or 0 }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            borderColor: '#28A745',
+            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            fill: false,
+            tension: 0.4
+        }{% if tipo == 'todos' %},{% endif %}
+        {% endif %}
+        {% if tipo == 'todos' or tipo == 'despesa' %}
+        {
+            label: 'Despesas',
+            data: [{% for mes in meses %}{{ totais_mensais[mes]['despesa'] or 0 }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            borderColor: '#DC3545',
+            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            fill: false,
+            tension: 0.4
+        }{% if tipo == 'todos' %},{% endif %}
+        {% endif %}
+        {% if tipo == 'todos' %}
+        {
+            label: 'Saldo',
+            data: [
+                {% for mes in meses %}
+                {{ (totais_mensais[mes]['receita']|float) - (totais_mensais[mes]['despesa']|float) }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            ],
+            borderColor: '#007BFF',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            fill: false,
+            tension: 0.4
+        }
+        {% endif %}
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.dataset.label + ': R$ ' + context.parsed.y.toFixed(2);
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R$ ' + value.toFixed(2);
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Função para exportar para Excel (placeholder)
+function exportarExcel() {
+    // Converter tabela para CSV
+    let csv = '';
+    const table = document.getElementById('relatorioTable');
+    const rows = table.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td, th');
+        const rowData = Array.from(cells).map(cell => {
+            let text = cell.textContent.trim();
+            // Remover caracteres especiais do valor
+            text = text.replace(/R\$\s*/, '').replace(/\./g, '').replace(/,/g, '.');
+            return '"' + text + '"';
+        });
+        csv += rowData.join(';') + '\n';
+    });
+    
+    // Download do arquivo
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'relatorio_financeiro_{{ ano }}.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %}

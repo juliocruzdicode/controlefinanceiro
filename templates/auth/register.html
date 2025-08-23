@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Conta - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow">
+            <div class="card-header text-center bg-success text-white">
+                <h4><i class="fas fa-user-plus"></i> Criar Nova Conta</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <small>
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Crie sua conta</strong> para começar a organizar suas finanças com segurança.
+                    </small>
+                </div>
+                
+                <div class="text-center my-3">
+                    <div class="d-grid">
+                        <a href="{{ url_for('register_google') }}" class="btn btn-outline-danger">
+                            <i class="bi bi-google me-2"></i>Cadastrar com Google
+                        </a>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center my-3">
+                        <hr class="flex-grow-1">
+                        <span class="mx-2 text-muted">ou cadastre manualmente</span>
+                        <hr class="flex-grow-1">
+                    </div>
+                </div>
+                
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label") }}
+                        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.username.errors[0] }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            <small>Digite seu nome completo</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label") }}
+                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.email.errors[0] }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            <small>Email válido para recuperação de conta</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Novos campos de perfil -->
+                    <div class="mb-3">
+                        {{ form.telefone.label(class="form-label") }}
+                        {{ form.telefone(class="form-control telefone-mask" + (" is-invalid" if form.telefone.errors else "")) }}
+                        {% if form.telefone.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.telefone.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            {{ form.data_nascimento.label(class="form-label") }}
+                            {{ form.data_nascimento(class="form-control" + (" is-invalid" if form.data_nascimento.errors else "")) }}
+                            {% if form.data_nascimento.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.data_nascimento.errors[0] }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.sexo.label(class="form-label") }}
+                            {{ form.sexo(class="form-select" + (" is-invalid" if form.sexo.errors else "")) }}
+                            {% if form.sexo.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.sexo.errors[0] }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.cidade.label(class="form-label") }}
+                        {{ form.cidade(class="form-control" + (" is-invalid" if form.cidade.errors else "")) }}
+                        {% if form.cidade.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.cidade.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+                        {% if form.password.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.password.errors[0] }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            <small>Mínimo 8 caracteres, com letras, números e símbolos</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.password2.label(class="form-label") }}
+                        {{ form.password2(class="form-control" + (" is-invalid" if form.password2.errors else "")) }}
+                        {% if form.password2.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.password2.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid mb-3">
+                        {{ form.submit(class="btn btn-success btn-lg") }}
+                    </div>
+                </form>
+                
+                <div class="text-center">
+                    <p class="text-muted">
+                        Já tem uma conta?
+                        <a href="{{ url_for('login') }}" class="text-decoration-none">
+                            <strong>Entrar</strong>
+                        </a>
+                    </p>
+                </div>
+            </div>
+            <div class="card-footer text-center">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <i class="fas fa-shield-alt text-success"></i>
+                        <br><small class="text-muted">Seguro</small>
+                    </div>
+                    <div class="col-4">
+                        <i class="fas fa-lock text-success"></i>
+                        <br><small class="text-muted">Criptografado</small>
+                    </div>
+                    <div class="col-4">
+                        <i class="fas fa-user-secret text-success"></i>
+                        <br><small class="text-muted">Privado</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                🔒 Seus dados estão protegidos com criptografia de nível bancário
+            </small>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.form-control {
+    border-radius: 8px;
+}
+
+.btn {
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 500;
+}
+
+body {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    min-height: 100vh;
+}
+
+.container-fluid {
+    padding-top: 3vh;
+}
+
+.card-footer i {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+<script>
+    $(document).ready(function(){
+        // Aplicar máscara ao telefone
+        $('.telefone-mask').mask('(00) 00000-0000', {
+            placeholder: "(XX) XXXXX-XXXX",
+            clearIfNotMatch: true
+        });
+    });
+</script>
+{% endblock %}

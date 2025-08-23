@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Reenviar Email de Verificação{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4><i class="fas fa-paper-plane"></i> Reenviar Email de Verificação</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-center text-muted mb-4">
+                        Digite seu email para receber um novo link de confirmação
+                    </p>
+
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope"></i> Email
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   name="email" 
+                                   placeholder="seu@email.com"
+                                   required>
+                            <div class="form-text">
+                                Digite o mesmo email usado no cadastro
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mb-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Reenviar Email
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="text-center">
+                        <hr>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar ao Login
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-center text-muted">
+                    <small>
+                        <i class="fas fa-info-circle"></i> 
+                        O link de verificação expira em 24 horas
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+
+.form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 12px 15px;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn {
+    border-radius: 25px;
+    padding: 12px 20px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+.btn-outline-secondary:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+</style>
+{% endblock %}

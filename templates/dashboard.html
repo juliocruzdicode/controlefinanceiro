@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Controle Financeiro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2">Dashboard Financeiro</h1>
+        <p class="text-muted">Visão geral das suas finanças</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Receitas Total</h5>
+                        <h3>R$ {{ "%.2f"|format(receitas_total) }}</h3>
+                    </div>
+                    <i class="fas fa-arrow-up fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Despesas Total</h5>
+                        <h3>R$ {{ "%.2f"|format(despesas_total) }}</h3>
+                    </div>
+                    <i class="fas fa-arrow-down fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card {% if saldo >= 0 %}bg-primary{% else %}bg-warning{% endif %} text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Saldo</h5>
+                        <h3>R$ {{ "%.2f"|format(saldo) }}</h3>
+                    </div>
+                    <i class="fas fa-wallet fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Saldo Mês</h5>
+                        <h3>R$ {{ "%.2f"|format(receitas_mes - despesas_mes) }}</h3>
+                    </div>
+                    <i class="fas fa-calendar fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Gráfico de Gastos por Categoria</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoCategoria" height="200"></canvas>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Receitas vs Despesas (Mensal)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="graficoTempo" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Últimas Transações</h5>
+                <a href="{{ url_for('nova_transacao') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Nova
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if transacoes_recentes %}
+                    <div class="list-group list-group-flush">
+                        {% for transacao in transacoes_recentes %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="mb-1">{{ transacao.descricao }}</h6>
+                                    <small class="text-muted">
+                                        {{ transacao.categoria.nome }} - 
+                                        {{ transacao.data_transacao.strftime('%d/%m/%Y') }}
+                                    </small>
+                                </div>
+                                <span class="badge bg-{{ 'success' if transacao.tipo.value == 'receita' else 'danger' }}">
+                                    {% if transacao.tipo.value == 'receita' %}+{% else %}-{% endif %}
+                                    R$ {{ "%.2f"|format(transacao.valor) }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">Nenhuma transação encontrada</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-body text-center">
+                <h5>Ações Rápidas</h5>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('nova_transacao') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Nova Transação
+                    </a>
+                    <a href="{{ url_for('nova_categoria') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-tag me-2"></i>Nova Categoria
+                    </a>
+                    <a href="{{ url_for('relatorios') }}" class="btn btn-outline-info">
+                        <i class="fas fa-chart-bar me-2"></i>Ver Relatórios
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Carregar dados dos gráficos
+fetch('/api/dados-grafico')
+    .then(response => response.json())
+    .then(data => {
+        // Gráfico de pizza - Gastos por categoria
+        const ctxCategoria = document.getElementById('graficoCategoria').getContext('2d');
+        new Chart(ctxCategoria, {
+            type: 'doughnut',
+            data: {
+                labels: data.categoria.labels,
+                datasets: [{
+                    data: data.categoria.data,
+                    backgroundColor: data.categoria.colors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Gráfico de linha - Receitas vs Despesas
+        const ctxTempo = document.getElementById('graficoTempo').getContext('2d');
+        new Chart(ctxTempo, {
+            type: 'line',
+            data: {
+                labels: data.tempo.labels,
+                datasets: [{
+                    label: 'Receitas',
+                    data: data.tempo.receitas,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Despesas',
+                    data: data.tempo.despesas,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

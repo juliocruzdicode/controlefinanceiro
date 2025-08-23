@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Transações Recorrentes{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Transações Recorrentes</h1>
+    <div>
+        <button class="btn btn-outline-primary me-2" onclick="gerarTodasPendentes()">
+            <i class="fas fa-sync-alt"></i> Gerar Pendentes
+        </button>
+        <a href="{{ url_for('nova_transacao_recorrente') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nova Transação Recorrente
+        </a>
+    </div>
+</div>
+
+{% if recorrentes %}
+<div class="row">
+    {% for recorrente in recorrentes %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="me-2" style="width: 12px; height: 12px; background-color: {{ recorrente.categoria.cor }}; border-radius: 50%;"></div>
+                    <strong>{{ recorrente.categoria.nome }}</strong>
+                </div>
+                <span class="badge badge-status-{{ recorrente.status.value }}">
+                    {{ recorrente.status.value|title }}
+                </span>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ recorrente.descricao }}</h5>
+                <p class="card-text">
+                    <strong class="text-{{ 'success' if recorrente.tipo.value == 'receita' else 'danger' }}">
+                        {{ 'R$' }} {{ "%.2f"|format(recorrente.valor) }}
+                    </strong>
+                </p>
+                
+                <div class="row small text-muted mb-2">
+                    <div class="col-6">
+                        <strong>Frequência:</strong><br>
+                        {{ recorrente.tipo_recorrencia.value|title }}
+                    </div>
+                    <div class="col-6">
+                        <strong>Tipo:</strong><br>
+                        {{ recorrente.tipo.value|title }}
+                    </div>
+                </div>
+                
+                <div class="row small text-muted mb-2">
+                    <div class="col-6">
+                        <strong>Início:</strong><br>
+                        {{ recorrente.data_inicio.strftime('%d/%m/%Y') }}
+                    </div>
+                    <div class="col-6">
+                        <strong>Fim:</strong><br>
+                        {{ recorrente.data_fim.strftime('%d/%m/%Y') if recorrente.data_fim else 'Indefinido' }}
+                    </div>
+                </div>
+                
+                {% if recorrente.is_parcelada %}
+                <div class="mb-2">
+                    <div class="progress" style="height: 5px;">
+                        <div class="progress-bar" 
+                             style="width: {{ (recorrente.parcelas_geradas / recorrente.total_parcelas * 100) if recorrente.total_parcelas > 0 else 0 }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        {{ recorrente.parcelas_geradas }}/{{ recorrente.total_parcelas }} parcelas
+                        {% if recorrente.parcelas_restantes > 0 %}
+                        ({{ recorrente.parcelas_restantes }} restantes)
+                        {% endif %}
+                    </small>
+                </div>
+                {% else %}
+                <small class="text-muted">
+                    <i class="fas fa-infinity"></i> Transação contínua<br>
+                    {{ recorrente.transacoes|length }} transação(ões) gerada(s)
+                </small>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <div class="btn-group w-100" role="group">
+                    <a href="{{ url_for('editar_transacao_recorrente', recorrente_id=recorrente.id) }}" 
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    
+                    {% if not recorrente.is_finalizada %}
+                    <button class="btn btn-outline-secondary btn-sm" 
+                            onclick="gerarPendentes({{ recorrente.id }})">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    
+                    <button class="btn btn-outline-warning btn-sm" 
+                            onclick="pausarReativar({{ recorrente.id }})">
+                        <i class="fas fa-{{ 'play' if recorrente.status.value == 'pausada' else 'pause' }}"></i>
+                    </button>
+                    
+                    <button class="btn btn-outline-danger btn-sm" 
+                            onclick="finalizar({{ recorrente.id }})">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    {% else %}
+                    <span class="btn btn-outline-secondary btn-sm disabled">
+                        <i class="fas fa-check"></i> Finalizada
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <div class="mb-4">
+        <i class="fas fa-calendar-alt fa-4x text-muted"></i>
+    </div>
+    <h3 class="text-muted">Nenhuma transação recorrente</h3>
+    <p class="text-muted">Crie sua primeira transação recorrente para automatizar suas finanças.</p>
+    <a href="{{ url_for('nova_transacao_recorrente') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Criar Transação Recorrente
+    </a>
+</div>
+{% endif %}
+
+<style>
+.badge-status-ativa {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-status-pausada {
+    background-color: #ffc107;
+    color: black;
+}
+
+.badge-status-finalizada {
+    background-color: #6c757d;
+    color: white;
+}
+</style>
+
+<script>
+function gerarPendentes(recorrenteId) {
+    if (confirm('Gerar transações pendentes para esta recorrência?')) {
+        fetch(`/api/transacao-recorrente/${recorrenteId}/gerar`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('danger', data.message);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Erro ao gerar transações: ' + error);
+        });
+    }
+}
+
+function gerarTodasPendentes() {
+    if (confirm('Gerar todas as transações pendentes de todas as recorrências ativas?')) {
+        fetch('/api/gerar-todas-transacoes-pendentes')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('danger', data.message);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Erro ao gerar transações: ' + error);
+        });
+    }
+}
+
+function pausarReativar(recorrenteId) {
+    fetch(`/api/transacao-recorrente/${recorrenteId}/pausar`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert('danger', data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Erro ao alterar status: ' + error);
+    });
+}
+
+function finalizar(recorrenteId) {
+    if (confirm('Tem certeza que deseja finalizar esta transação recorrente? Esta ação não pode ser desfeita.')) {
+        fetch(`/api/transacao-recorrente/${recorrenteId}/finalizar`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('danger', data.message);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Erro ao finalizar transação: ' + error);
+        });
+    }
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container-fluid').prepend(alertDiv);
+}
+</script>
+{% endblock %}
