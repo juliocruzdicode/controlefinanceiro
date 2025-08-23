@@ -65,9 +65,9 @@ services:
       GOOGLE_REDIRECT_URI: https://prosperai.site/callback
       GOOGLE_DISCOVERY_URL: https://accounts.google.com/.well-known/openid-configuration
 
-    # Removido o mapeamento de porta direto, pois o Traefik gerenciará isso
-    # ports:
-    #   - "3000:5005"
+    # Temporariamente mapeando a porta para diagnóstico
+    ports:
+      - "127.0.0.1:5005:5005"
     expose:
       - "5005"
     volumes:
