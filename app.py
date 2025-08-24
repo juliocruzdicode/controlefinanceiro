@@ -1868,8 +1868,26 @@ def relatorios():
         except (ValueError, TypeError):
             conta_id = None
     
-    # Obter transações filtradas
+    # Obter transações reais
     transacoes = query.all()
+
+    # Gerar projeções futuras para recorrências ativas do usuário
+    from models import TransacaoRecorrente
+    recorrentes_ativas = TransacaoRecorrente.query.filter_by(user_id=current_user.id, status=StatusRecorrencia.ATIVA).all()
+    transacoes_projetadas = []
+    MESES_FUTUROS_RELATORIO = 24  # ou outro valor desejado
+    for recorrente in recorrentes_ativas:
+        # Só gera se não tiver data_fim ou se data_fim for no futuro
+        if not recorrente.data_fim or recorrente.data_fim > datetime.utcnow():
+            projecoes = recorrente.gerar_transacoes_pendentes(meses_futuros=MESES_FUTUROS_RELATORIO, apenas_projetar=True)
+            for p in projecoes:
+                p.is_projetada = True
+            transacoes_projetadas.extend(projecoes)
+
+    # Unir transações reais e projetadas, evitando duplicidade de data/recorrencia
+    datas_reais = set((t.data_transacao.date(), t.recorrencia_id) for t in transacoes)
+    transacoes_projetadas_filtradas = [p for p in transacoes_projetadas if (p.data_transacao.date(), p.recorrencia_id) not in datas_reais]
+    transacoes.extend(transacoes_projetadas_filtradas)
     
     # Gerar meses do ano
     meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 
