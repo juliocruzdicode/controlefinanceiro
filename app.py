@@ -1123,35 +1123,28 @@ def transacoes():
         error_out=False
     )
     
-    # Combinar transações do banco com projeções
+    # Combinar transações do banco com projeções, sem duplicar datas
     transacoes_combinadas = list(transacoes_pagination.items)
-    
     # Adicionar flag is_projetada=False para transações reais
     for transacao in transacoes_combinadas:
         transacao.is_projetada = False
-    
-    # Adicionar projeções se houver espaço na página atual
-    print(f"DEBUG - Total de projeções geradas: {len(projecoes)}")
-    
-    if projecoes:
-        print(f"DEBUG - Projeções encontradas: {len(projecoes)}")
-        
-        # Ordenar projeções por data
-        projecoes.sort(key=lambda x: x.data_transacao)
-        
-        # Adicionar projeções à lista combinada
-        transacoes_combinadas.extend(projecoes)
-        
-        # Reordenar a lista combinada por data (mais recente primeiro)
+
+    # Montar set de datas já ocupadas por transações reais
+    datas_reais = set()
+    for t in transacoes_combinadas:
+        datas_reais.add((t.data_transacao, t.recorrencia_id))
+
+    # Só adicionar projeções para datas que não têm transação real
+    projecoes_filtradas = [p for p in projecoes if (p.data_transacao, p.recorrencia_id) not in datas_reais]
+    print(f"DEBUG - Projeções filtradas (sem datas duplicadas): {len(projecoes_filtradas)}")
+
+    if projecoes_filtradas:
+        projecoes_filtradas.sort(key=lambda x: x.data_transacao)
+        transacoes_combinadas.extend(projecoes_filtradas)
         transacoes_combinadas.sort(key=lambda x: x.data_transacao, reverse=True)
-        
-        # Atualizar total de itens na paginação para incluir projeções
-        transacoes_pagination.total += len(projecoes)
-        
-        print(f"DEBUG - Lista final: {len(transacoes_combinadas)} transações, das quais {len(projecoes)} são projeções")
-        
-        # Listar as projeções para debug
-        for p in projecoes:
+        transacoes_pagination.total += len(projecoes_filtradas)
+        print(f"DEBUG - Lista final: {len(transacoes_combinadas)} transações, das quais {len(projecoes_filtradas)} são projeções")
+        for p in projecoes_filtradas:
             print(f"DEBUG - Projeção: ID={p.id}, Data={p.data_transacao}, Valor={p.valor}, Descrição={p.descricao}")
     else:
         print("DEBUG - Nenhuma projeção gerada")
