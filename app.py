@@ -2900,13 +2900,16 @@ def limpar_todas_transacoes():
         return redirect(url_for('admin'))
 
     try:
-        # Primeiro apaga todas as transações
+        # Primeiro apaga todas as associações de tags
+        db.session.execute('DELETE FROM transacao_tags')
+        db.session.commit()
+        # Depois apaga todas as transações
         Transacao.query.delete()
         db.session.commit()
         # Depois apaga todas as recorrências
         TransacaoRecorrente.query.delete()
         db.session.commit()
-        flash('Todas as transações e recorrências foram removidas com sucesso!', 'success')
+        flash('Todas as transações, tags e recorrências foram removidas com sucesso!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'❌ Erro ao limpar transações: {e}', 'danger')
