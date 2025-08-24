@@ -1113,10 +1113,20 @@ def nova_transacao():
                 db.session.add(recorrente)
                 db.session.commit()
                 
-                # Gerar transações pendentes
-                transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+                # Definir horizonte de meses futuros
+                meses_futuros = 12
                 
-                flash(f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s).', 'success')
+                # Se tem data_fim, usar isso como limite
+                if recorrente.data_fim:
+                    # Gerar todas as transações até a data_fim
+                    transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+                    mensagem = f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}.'
+                else:
+                    # Gerar transações para os próximos meses
+                    transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
+                    mensagem = f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s) para os próximos {meses_futuros} meses.'
+                
+                flash(mensagem, 'success')
             else:
                 # Criar transação única
                 transacao = Transacao(
@@ -1850,10 +1860,20 @@ def nova_transacao_recorrente():
             db.session.add(recorrente)
             db.session.commit()
             
-            # Gerar transações pendentes até a data atual
-            transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+            # Definir horizonte de meses futuros
+            meses_futuros = 12
             
-            flash(f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s).', 'success')
+            # Se tem data_fim, usar isso como limite
+            if recorrente.data_fim:
+                # Gerar todas as transações até a data_fim
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+                mensagem = f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}.'
+            else:
+                # Gerar transações para os próximos meses
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
+                mensagem = f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s) para os próximos {meses_futuros} meses.'
+            
+            flash(mensagem, 'success')
             return redirect(url_for('transacoes_recorrentes'))
             
         except Exception as e:
@@ -1909,13 +1929,34 @@ def editar_transacao_recorrente(recorrente_id):
 def gerar_transacoes_pendentes(recorrente_id):
     """Gera manualmente as transações pendentes de uma recorrência"""
     try:
+        # Parâmetro para número de meses
+        meses_futuros = request.args.get('meses', 12, type=int)
+        
+        # Validar meses_futuros (mínimo 1, máximo 36)
+        if meses_futuros < 1:
+            meses_futuros = 1
+        elif meses_futuros > 36:
+            meses_futuros = 36
+        
         recorrente = TransacaoRecorrente.query.filter_by(id=recorrente_id, user_id=current_user.id).first_or_404()
-        transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+        
+        # Se tem data_fim, usar isso como limite
+        if recorrente.data_fim:
+            # Gerar todas as transações até a data_fim
+            transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+            mensagem = f'{len(transacoes_geradas)} transação(ões) gerada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}'
+        else:
+            # Gerar transações para os próximos meses
+            transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
+            mensagem = f'{len(transacoes_geradas)} transação(ões) gerada(s) para os próximos {meses_futuros} meses'
         
         return jsonify({
             'success': True,
-            'message': f'{len(transacoes_geradas)} transação(ões) gerada(s)',
-            'transacoes_geradas': len(transacoes_geradas)
+            'message': mensagem,
+            'transacoes_geradas': len(transacoes_geradas),
+            'meses_futuros': meses_futuros,
+            'tem_data_fim': recorrente.data_fim is not None,
+            'data_fim': recorrente.data_fim.strftime('%d/%m/%Y') if recorrente.data_fim else None
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -1970,21 +2011,48 @@ def api_transacoes_recorrentes():
 def gerar_todas_transacoes_pendentes():
     """Gera todas as transações pendentes de todas as recorrências ativas"""
     try:
+        # Parâmetro para número de meses
+        meses_futuros = request.args.get('meses', 12, type=int)
+        
+        # Validar meses_futuros (mínimo 1, máximo 36)
+        if meses_futuros < 1:
+            meses_futuros = 1
+        elif meses_futuros > 36:
+            meses_futuros = 36
+        
         recorrentes_ativas = TransacaoRecorrente.query.filter_by(
             status=StatusRecorrencia.ATIVA, 
             user_id=current_user.id
         ).all()
         total_transacoes_geradas = 0
+        recorrentes_com_data_fim = 0
         
         for recorrente in recorrentes_ativas:
-            transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+            # Se tem data_fim, usar isso como limite
+            if recorrente.data_fim:
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+                recorrentes_com_data_fim += 1
+            else:
+                # Gerar transações para os próximos meses
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
+            
             total_transacoes_geradas += len(transacoes_geradas)
+        
+        # Construir mensagem personalizada
+        if recorrentes_com_data_fim > 0 and recorrentes_com_data_fim < len(recorrentes_ativas):
+            mensagem = f'{total_transacoes_geradas} transação(ões) gerada(s): {recorrentes_com_data_fim} recorrência(s) até a data fim e {len(recorrentes_ativas) - recorrentes_com_data_fim} para os próximos {meses_futuros} meses'
+        elif recorrentes_com_data_fim == len(recorrentes_ativas):
+            mensagem = f'{total_transacoes_geradas} transação(ões) gerada(s) até as datas de fim das recorrências'
+        else:
+            mensagem = f'{total_transacoes_geradas} transação(ões) gerada(s) para os próximos {meses_futuros} meses'
         
         return jsonify({
             'success': True,
-            'message': f'{total_transacoes_geradas} transação(ões) gerada(s) no total',
+            'message': mensagem,
             'recorrentes_processadas': len(recorrentes_ativas),
-            'transacoes_geradas': total_transacoes_geradas
+            'recorrentes_com_data_fim': recorrentes_com_data_fim,
+            'transacoes_geradas': total_transacoes_geradas,
+            'meses_futuros': meses_futuros
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

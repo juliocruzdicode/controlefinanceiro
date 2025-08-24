@@ -54,7 +54,10 @@ def gerar_todas_transacoes_recorrentes(app):
         try:
             from models import TransacaoRecorrente, StatusRecorrencia, db
             
-            app.logger.info("🔄 Iniciando geração automática de transações recorrentes")
+            # Usar 12 meses como padrão para o horizonte futuro
+            meses_futuros = 12
+            
+            app.logger.info(f"🔄 Iniciando geração automática de transações recorrentes (horizonte: {meses_futuros} meses)")
             
             # Buscar todas as recorrências ativas
             recorrentes_ativas = TransacaoRecorrente.query.filter_by(
@@ -69,11 +72,15 @@ def gerar_todas_transacoes_recorrentes(app):
             # Processar cada recorrência
             for recorrente in recorrentes_ativas:
                 try:
-                    transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+                    # Se a recorrência tem data_fim, gerar todas as transações até essa data
+                    transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
                     total_transacoes_geradas += len(transacoes_geradas)
                     
                     if len(transacoes_geradas) > 0:
-                        app.logger.info(f"✅ Recorrência #{recorrente.id} ({recorrente.descricao}): {len(transacoes_geradas)} transação(ões) gerada(s)")
+                        if recorrente.data_fim:
+                            app.logger.info(f"✅ Recorrência #{recorrente.id} ({recorrente.descricao}): {len(transacoes_geradas)} transação(ões) gerada(s) até {recorrente.data_fim.strftime('%d/%m/%Y')}")
+                        else:
+                            app.logger.info(f"✅ Recorrência #{recorrente.id} ({recorrente.descricao}): {len(transacoes_geradas)} transação(ões) gerada(s) para os próximos {meses_futuros} meses")
                 except Exception as e:
                     app.logger.error(f"❌ Erro ao processar recorrência #{recorrente.id}: {str(e)}")
             
@@ -81,7 +88,8 @@ def gerar_todas_transacoes_recorrentes(app):
             
             return {
                 'recorrentes_processadas': total_recorrentes,
-                'transacoes_geradas': total_transacoes_geradas
+                'transacoes_geradas': total_transacoes_geradas,
+                'meses_futuros': meses_futuros
             }
             
         except Exception as e:

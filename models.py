@@ -384,11 +384,34 @@ class TransacaoRecorrente(db.Model):
         db.session.commit()
         return nova_transacao
     
-    def gerar_transacoes_pendentes(self):
-        """Gera todas as transações pendentes até a data atual"""
+    def gerar_transacoes_pendentes(self, meses_futuros=12):
+        """
+        Gera todas as transações pendentes até a data_fim, se definida,
+        ou até o número de meses futuros especificado.
+        
+        Args:
+            meses_futuros (int): Quantos meses para frente gerar (padrão: 12)
+            
+        Returns:
+            Lista de transações geradas
+        """
         transacoes_geradas = []
         hoje = datetime.utcnow()
         
+        # Definir data limite de geração
+        if self.data_fim:
+            # Se tem data_fim, gerar todas as transações até essa data
+            data_limite = self.data_fim
+        else:
+            # Caso contrário, gerar para os próximos X meses
+            data_limite = hoje + timedelta(days=30 * meses_futuros)
+        
+        # Verificar se a recorrência já foi finalizada manualmente ou por parcelas
+        if self.status == StatusRecorrencia.FINALIZADA or \
+           (self.is_parcelada and self.parcelas_geradas >= self.total_parcelas):
+            return transacoes_geradas
+        
+        # Loop de geração de transações
         while not self.is_finalizada:
             # Calcular próxima data
             if self.transacoes:
@@ -397,14 +420,16 @@ class TransacaoRecorrente(db.Model):
             else:
                 proxima_data = self.data_inicio
             
-            # Se a próxima data já passou, gerar a transação
-            if proxima_data <= hoje:
-                nova_transacao = self.gerar_proxima_transacao()
-                if nova_transacao:
-                    transacoes_geradas.append(nova_transacao)
-                else:
-                    break
+            # Verificar se estamos dentro do limite (data_fim ou meses_futuros)
+            if proxima_data > data_limite:
+                break
+            
+            # Gerar a transação
+            nova_transacao = self.gerar_proxima_transacao()
+            if nova_transacao:
+                transacoes_geradas.append(nova_transacao)
             else:
+                # Se não conseguiu gerar mais transações, a recorrência foi finalizada
                 break
         
         return transacoes_geradas
