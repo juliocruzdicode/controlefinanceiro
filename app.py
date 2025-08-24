@@ -2892,6 +2892,7 @@ def criar_tabelas():
             print("✅ Categorias hierárquicas criadas com sucesso!")
 
 @app.route('/admin/limpar-todas-transacoes', methods=['POST'])
+@app.route('/admin/limpar-transacoes', methods=['POST'])
 @login_required
 def limpar_todas_transacoes():
     if not current_user.is_admin:
