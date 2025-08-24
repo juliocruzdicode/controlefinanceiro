@@ -398,40 +398,88 @@ class TransacaoRecorrente(db.Model):
         transacoes_geradas = []
         hoje = datetime.utcnow()
         
-        # Definir data limite de geração
+        # Verificar se a recorrência já foi finalizada manualmente ou por parcelas
+        if self.status == StatusRecorrencia.FINALIZADA or \
+           (self.is_parcelada and self.parcelas_geradas >= self.total_parcelas):
+            print(f"Recorrência {self.id} já finalizada - Status: {self.status.value}, Parcelas: {self.parcelas_geradas}/{self.total_parcelas if self.total_parcelas else 'Indefinido'}")
+            return transacoes_geradas
+        
+        # Definir data limite de geração - SEMPRE usar a data atual + meses_futuros
+        # independentemente de transações existentes
         if self.data_fim:
             # Se tem data_fim, gerar todas as transações até essa data
             data_limite = self.data_fim
         else:
-            # Caso contrário, gerar para os próximos X meses
-            data_limite = hoje + timedelta(days=30 * meses_futuros)
+            # Caso contrário, gerar para os próximos X meses a partir de HOJE
+            # Isso é crítico: sempre usar a data atual como base, não a última transação
+            data_limite = hoje + relativedelta(months=meses_futuros)
         
-        # Verificar se a recorrência já foi finalizada manualmente ou por parcelas
-        if self.status == StatusRecorrencia.FINALIZADA or \
-           (self.is_parcelada and self.parcelas_geradas >= self.total_parcelas):
-            return transacoes_geradas
+        # Log de debug
+        print(f"Gerando transações para {self.descricao} (ID: {self.id})")
+        print(f"Data início: {self.data_inicio}, Data fim: {self.data_fim}")
+        print(f"Data limite de geração: {data_limite} (hoje + {meses_futuros} meses)")
+        print(f"Tipo de recorrência: {self.tipo_recorrencia.value}")
         
-        # Loop de geração de transações
-        while not self.is_finalizada:
-            # Calcular próxima data
-            if self.transacoes:
+        # CRUCIAL: Determinar a próxima data a partir da qual devemos gerar transações
+        proxima_data = None
+        
+        if self.transacoes:
+            try:
+                # Obter a última transação gerada
                 ultima_transacao = max(self.transacoes, key=lambda t: t.data_transacao)
                 proxima_data = self.calcular_proxima_data(ultima_transacao.data_transacao)
-            else:
+                print(f"Última transação: {ultima_transacao.data_transacao}, Próxima data: {proxima_data}")
+            except Exception as e:
+                print(f"Erro ao calcular próxima data: {str(e)}")
                 proxima_data = self.data_inicio
+        else:
+            proxima_data = self.data_inicio
+            print(f"Primeira transação, usando data_inicio: {proxima_data}")
+        
+        # NUNCA verificar se já existem transações até a data_limite
+        # Sempre gerar transações independentemente das existentes
+        
+        # Loop de geração de transações
+        max_iteracoes = 1000  # Aumentado para garantir geração adequada
+        iteracoes = 0
+        
+        # Continuamos enquanto:
+        # 1. A recorrência não estiver finalizada
+        # 2. Não atingirmos o limite máximo de iterações (segurança)
+        while not self.is_finalizada and iteracoes < max_iteracoes:
+            iteracoes += 1
             
-            # Verificar se estamos dentro do limite (data_fim ou meses_futuros)
+            # Calcular data da próxima transação
+            if iteracoes > 1 and self.transacoes:  # Já calculamos proxima_data para a primeira iteração
+                try:
+                    ultima_transacao = max(self.transacoes, key=lambda t: t.data_transacao)
+                    proxima_data = self.calcular_proxima_data(ultima_transacao.data_transacao)
+                    print(f"Iteração {iteracoes}: Próxima data calculada: {proxima_data}")
+                except Exception as e:
+                    print(f"Erro ao calcular próxima data: {str(e)}")
+                    break
+            
+            # Verificar se estamos dentro do limite de geração (data_fim ou meses_futuros)
             if proxima_data > data_limite:
+                print(f"Próxima data {proxima_data} excede data limite {data_limite}")
                 break
             
-            # Gerar a transação
+            # CRÍTICO: SEMPRE tentar gerar a próxima transação independentemente de qualquer outra verificação
+            print(f"Gerando transação para data {proxima_data}")
             nova_transacao = self.gerar_proxima_transacao()
+            
             if nova_transacao:
+                print(f"Nova transação gerada: {nova_transacao.descricao} - {nova_transacao.data_transacao}")
                 transacoes_geradas.append(nova_transacao)
             else:
                 # Se não conseguiu gerar mais transações, a recorrência foi finalizada
+                print("Não foi possível gerar mais transações. Recorrência finalizada.")
                 break
         
+        if iteracoes >= max_iteracoes:
+            print(f"ATENÇÃO: Limite máximo de iterações atingido para recorrência {self.id}")
+        
+        print(f"Total de transações geradas: {len(transacoes_geradas)}")
         return transacoes_geradas
     
     def to_dict(self):

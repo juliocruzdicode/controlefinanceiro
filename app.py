@@ -1068,6 +1068,141 @@ def transacoes():
         error_out=False
     )
     
+    # Verificar se estamos próximos ao fim das transações recorrentes e gerar mais se necessário
+    # CRÍTICO: Esta é a parte que garante a geração contínua de transações
+    
+    print("\n========== INICIANDO VERIFICAÇÃO DE TRANSAÇÕES RECORRENTES ==========")
+    print(f"Mês visualizado: {mes_atual}/{ano_atual} ({mes_nome})")
+    
+    # Definir data limite com base no mês visualizado
+    # SEMPRE considerar o mês visualizado como referência, não filtros
+    data_visualizada = None
+    if data_inicio:
+        data_visualizada = datetime.strptime(data_inicio, '%Y-%m-%d')
+        print(f"Data de início do filtro: {data_visualizada}")
+    else:
+        data_visualizada = datetime.utcnow()
+        print(f"Usando data atual: {data_visualizada}")
+    
+    # Calcular quantos meses no futuro estamos visualizando
+    hoje = datetime.utcnow()
+    diferenca_meses = ((data_visualizada.year - hoje.year) * 12 + data_visualizada.month - hoje.month)
+    print(f"Diferença em meses entre hoje e mês visualizado: {diferenca_meses}")
+    
+    # Definir horizonte de geração baseado na navegação
+    # SEMPRE gerar pelo menos X meses além do mês visualizado
+    meses_alem_visualizacao = 6  # Buffer de visualização futura
+    
+    # Calcular quantos meses no total gerar a partir de hoje
+    if diferenca_meses <= 0:
+        # Para meses atuais ou passados, gerar pelo menos 12 meses à frente
+        meses_para_gerar = 12
+    else:
+        # Para meses futuros, gerar até a data visualizada + buffer
+        meses_para_gerar = diferenca_meses + meses_alem_visualizacao
+    
+    print(f"Meses para gerar a partir de hoje: {meses_para_gerar}")
+    
+    # Data limite para geração de transações
+    data_limite = hoje + relativedelta(months=meses_para_gerar)
+    print(f"Data limite para geração: {data_limite}")
+    
+    # Buscar todas as transações recorrentes ATIVAS do usuário
+    print("\n----- Buscando recorrências ativas -----")
+    
+    # IMPORTANTE: Verifique se estamos usando o valor correto para o status ativo
+    print(f"Valor do status ativo na enumeração: {StatusRecorrencia.ATIVA.value}")
+    
+    # Buscar por todas as recorrências do usuário para diagnóstico
+    todas_recorrencias = TransacaoRecorrente.query.filter_by(
+        user_id=current_user.id
+    ).all()
+    
+    print(f"Encontradas {len(todas_recorrencias)} recorrências para o usuário (de qualquer status):")
+    for r in todas_recorrencias:
+        print(f"  - ID: {r.id}, Descrição: {r.descricao}, Status: {r.status.value}, Tipo: {r.tipo_recorrencia.value}")
+    
+    # Buscar corretamente por status (usando a enumeração diretamente, não o valor)
+    recorrentes_ativas = TransacaoRecorrente.query.filter_by(
+        user_id=current_user.id, 
+        status=StatusRecorrencia.ATIVA
+    ).all()
+    
+    print(f"Recorrências ATIVAS encontradas: {len(recorrentes_ativas)} de {len(todas_recorrencias)} total")
+    
+    # Se não encontrou nenhuma, tente buscar todas as recorrências do usuário para diagnóstico
+    if not recorrentes_ativas:
+        print("Nenhuma recorrência com status ATIVA encontrada usando a enumeração.")
+    else:
+        print(f"Encontradas {len(recorrentes_ativas)} recorrências ativas:")
+        for r in recorrentes_ativas:
+            print(f"  - ID: {r.id}, Descrição: {r.descricao}, Tipo: {r.tipo_recorrencia.value}, Status: {r.status.value}")
+    
+    if not recorrentes_ativas:
+        print(f"Nenhuma recorrência ativa encontrada para o usuário {current_user.id}. Não há transações para gerar.")
+    else:
+        print(f"Processando {len(recorrentes_ativas)} recorrências ativas encontradas")
+    
+    # Para cada recorrente ativa, SEMPRE verificar e gerar transações
+    transacoes_recorrentes_geradas = 0
+    recorrentes_atualizadas = []
+    
+    for recorrente in recorrentes_ativas:
+        try:
+            print(f"\nProcessando recorrência {recorrente.id}: {recorrente.descricao}")
+            
+            # SEMPRE GERAR transações para garantir cobertura adequada
+            # Não fazer verificações que possam impedir a geração
+            print(f"Gerando transações para {meses_para_gerar} meses")
+            
+            # Chamar diretamente o método de geração com o horizonte calculado
+            novas_transacoes = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_para_gerar)
+            
+            transacoes_recorrentes_geradas += len(novas_transacoes)
+            if len(novas_transacoes) > 0:
+                recorrentes_atualizadas.append(recorrente.id)
+                print(f"Geradas {len(novas_transacoes)} novas transações")
+            else:
+                print("Nenhuma nova transação gerada")
+                
+        except Exception as e:
+            print(f"ERRO ao gerar transações para recorrência {recorrente.id}: {str(e)}")
+            import traceback
+            traceback.print_exc()  # Exibir stack trace completo
+    
+    # Se foram geradas novas transações, refazer a consulta e a paginação
+    if transacoes_recorrentes_geradas > 0:
+        # Reconstruir a consulta completa
+        query = Transacao.query.filter_by(user_id=current_user.id)
+        
+        # Reaplicar todos os filtros
+        if categoria_id:
+            query = query.filter_by(categoria_id=categoria_id)
+        if conta_id:
+            query = query.filter_by(conta_id=conta_id)
+        if tipo:
+            query = query.filter_by(tipo=tipo)
+        if data_inicio:
+            data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
+            query = query.filter(Transacao.data_transacao >= data_inicio_dt)
+        if data_fim:
+            data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
+            query = query.filter(Transacao.data_transacao <= data_fim_dt)
+        
+        # Refazer a paginação
+        transacoes_pagination = query.order_by(Transacao.data_transacao.desc()).paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        
+        # Preparar mensagem para o usuário
+        recorrentes_texto = ", ".join([f"#{id}" for id in recorrentes_atualizadas[:3]])
+        if len(recorrentes_atualizadas) > 3:
+            recorrentes_texto += f" e mais {len(recorrentes_atualizadas) - 3}"
+        
+        flash(f'Foram geradas automaticamente {transacoes_recorrentes_geradas} transações recorrentes ({recorrentes_texto}) para visualização futura.', 'info')
+    
     # Buscar dados para filtros
     # Buscar apenas categorias principais (sem pai) para o usuário atual
     categorias_principais = Categoria.query.filter_by(
