@@ -1025,7 +1025,28 @@ def transacoes():
     )
     
     # Buscar dados para filtros
-    categorias = Categoria.query.filter_by(user_id=current_user.id).order_by(Categoria.nome).all()
+    # Buscar apenas categorias principais (sem pai) para o usuário atual
+    categorias_principais = Categoria.query.filter_by(
+        user_id=current_user.id, 
+        categoria_pai_id=None
+    ).order_by(Categoria.nome).all()
+    
+    # Função para estruturar categorias hierarquicamente com subcategorias
+    def add_subcategorias(categoria):
+        categoria_dict = categoria.__dict__.copy()
+        if '_sa_instance_state' in categoria_dict:
+            del categoria_dict['_sa_instance_state']
+        
+        subcategorias = Categoria.query.filter_by(
+            user_id=current_user.id,
+            categoria_pai_id=categoria.id
+        ).order_by(Categoria.nome).all()
+        
+        categoria_dict['subcategorias'] = [add_subcategorias(subcat) for subcat in subcategorias]
+        return categoria_dict
+    
+    # Criar estrutura hierárquica
+    categorias = [add_subcategorias(cat) for cat in categorias_principais]
     contas = Conta.query.filter_by(user_id=current_user.id, ativa=True).order_by(Conta.nome).all()
     
     # Opções de itens por página
