@@ -1808,14 +1808,18 @@ def relatorios():
         ano = ano_atual
     
     # Obter anos disponíveis - FILTRAR POR USUÁRIO
-    anos_disponiveis = db.session.query(
+    # Anos disponíveis: incluir anos futuros até 5 anos à frente
+    anos_transacoes = db.session.query(
         extract('year', Transacao.data_transacao).label('ano')
     ).filter(
-        Transacao.user_id == current_user.id  # ← ADICIONAR FILTRO
+        Transacao.user_id == current_user.id
     ).distinct().order_by('ano').all()
-    anos_disponiveis = [int(a[0]) for a in anos_disponiveis]
-    if not anos_disponiveis:
-        anos_disponiveis = [ano_atual]
+    anos_disponiveis = [int(a[0]) for a in anos_transacoes]
+    ano_max = max(anos_disponiveis) if anos_disponiveis else ano_atual
+    ano_limite = max(ano_max, ano_atual) + 5
+    anos_futuros = [a for a in range(ano_atual, ano_limite+1)]
+    # Unir anos do banco e futuros, sem duplicar
+    anos_disponiveis = sorted(set(anos_disponiveis + anos_futuros))
     
     # Todas as categorias para o filtro - FILTRAR POR USUÁRIO
     todas_categorias = Categoria.query.filter_by(user_id=current_user.id).all()  # ← ADICIONAR FILTRO
