@@ -1,5 +1,64 @@
+import os
+import sqlite3
+import time
+import gc
+
 from models import db, Categoria, TipoTransacao
 from sqlalchemy import func
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+
+def reset_database(db_path, max_retries=5, retry_delay=1):
+    """
+    Função robusta para excluir e reiniciar completamente o banco de dados SQLite.
+    
+    Args:
+        db_path: Caminho para o arquivo do banco de dados
+        max_retries: Número máximo de tentativas
+        retry_delay: Atraso em segundos entre tentativas
+    
+    Returns:
+        bool: True se sucesso, False caso contrário
+    """
+    print(f"Tentando resetar banco de dados: {db_path}")
+    
+    # Força coleta de lixo para liberar conexões
+    gc.collect()
+    
+    # 1. Tenta fechar quaisquer conexões abertas
+    try:
+        engine = create_engine(f'sqlite:///{db_path}')
+        engine.dispose()
+    except Exception as e:
+        print(f"Aviso ao fechar conexões do SQLAlchemy: {e}")
+    
+    # 2. Tenta excluir o arquivo
+    for attempt in range(max_retries):
+        try:
+            if os.path.exists(db_path):
+                os.remove(db_path)
+                print(f"Banco de dados excluído com sucesso: {db_path}")
+                return True
+            else:
+                print(f"Arquivo do banco de dados não existe: {db_path}")
+                return True
+        except PermissionError:
+            print(f"Tentativa {attempt+1}/{max_retries}: Banco ainda em uso. Tentando liberar...")
+            
+            # Tenta fechar conexões usando sqlite3 diretamente
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.close()
+            except:
+                pass
+                
+            time.sleep(retry_delay)
+        except Exception as e:
+            print(f"Erro ao excluir banco: {str(e)}")
+            time.sleep(retry_delay)
+    
+    print("Falha ao excluir o banco de dados após várias tentativas.")
+    return False
 
 def criar_categorias_padrao(user_id, verificar_existentes=True):
     """
