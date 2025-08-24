@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Transação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4>Confirmar Transação Projetada</h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <p><strong>Atenção:</strong> Você está prestes a confirmar uma transação projetada. Após a confirmação, ela será adicionada ao banco de dados como uma transação real.</p>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <h5>Detalhes da Transação</h5>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th style="width: 30%">Descrição:</th>
+                            <td>{{ transacao.descricao }}</td>
+                        </tr>
+                        <tr>
+                            <th>Valor:</th>
+                            <td>R$ {{ transacao.valor|float|round(2)|string|replace(".", ",") }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tipo:</th>
+                            <td>
+                                {% if transacao.tipo.value == 'receita' %}
+                                <span class="badge badge-success">Receita</span>
+                                {% else %}
+                                <span class="badge badge-danger">Despesa</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Data:</th>
+                            <td>{{ transacao.data_transacao.strftime('%d/%m/%Y') }}</td>
+                        </tr>
+                        <tr>
+                            <th>Categoria:</th>
+                            <td>
+                                <span class="badge" style="background-color: {{ transacao.categoria.cor }}; color: white">
+                                    {{ transacao.categoria.nome }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Conta:</th>
+                            <td>
+                                <span class="badge" style="background-color: {{ transacao.conta.cor }}; color: white">
+                                    {{ transacao.conta.nome }}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('confirmar_transacao') }}">
+                <input type="hidden" name="recorrencia_id" value="{{ transacao.recorrencia_id }}">
+                <input type="hidden" name="data_transacao" value="{{ transacao.data_transacao.strftime('%Y-%m-%d') }}">
+                <input type="hidden" name="redirect_url" value="{{ request.args.get('redirect_url', url_for('transacoes')) }}">
+                
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="confirmo" name="confirmo" required>
+                        <label class="custom-control-label" for="confirmo">
+                            Confirmo que desejo adicionar esta transação ao meu controle financeiro
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{{ request.args.get('redirect_url', url_for('transacoes')) }}" class="btn btn-secondary mr-2">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Confirmar Transação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

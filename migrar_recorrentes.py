@@ -99,7 +99,8 @@ def executar_migracao():
                 total_transacoes_geradas = 0
                 
                 for recorrente in todas_recorrentes:
-                    transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+                    # Como é migração, queremos criar as transações no banco de dados
+                    transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=False)
                     total_transacoes_geradas += len(transacoes_geradas)
                     print(f"  - {recorrente.descricao}: {len(transacoes_geradas)} transação(ões) gerada(s)")
                 

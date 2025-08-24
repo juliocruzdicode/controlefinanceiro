@@ -6,6 +6,7 @@ from models import db, Transacao, Categoria, TipoTransacao, TransacaoRecorrente,
 from forms import TransacaoForm, CategoriaForm, TransacaoRecorrenteForm, ContaForm, LoginForm, MFAForm, BackupCodeForm, SetupMFAForm, RegisterForm, ChangePasswordForm, ForgotPasswordForm, ResetPasswordForm, TemaForm, UserThemeForm, CompletarCadastroForm
 from config import Config
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, or_
 import qrcode
 import io
@@ -1062,11 +1063,98 @@ def transacoes():
         query = query.filter(Transacao.data_transacao <= data_fim_dt)
     
     # Paginação
-    transacoes_pagination = query.order_by(Transacao.data_transacao.desc()).paginate(
+    query_final = query.order_by(Transacao.data_transacao.desc())
+    
+    # NOVA FUNCIONALIDADE: Incluir projeções futuras não consolidadas
+    # Mostrar projeções apenas para meses futuros
+    mostrar_projecoes = request.args.get('mostrar_projecoes', 'true').lower() == 'true'
+    projecoes = []
+    hoje = datetime.utcnow().date()
+    
+    # Logs para debug
+    print(f"DEBUG - Parâmetros da rota transações:")
+    print(f"DEBUG - mostrar_projecoes: {mostrar_projecoes}")
+    print(f"DEBUG - Data atual: {hoje}")
+    print(f"DEBUG - Mês/Ano visualizado: {mes_atual}/{ano_atual}")
+    
+    # Se estamos visualizando um mês futuro, buscar projeções
+    data_visualizada_obj = datetime(ano_atual, mes_atual, 1).date()
+    print(f"DEBUG - Data visualizada: {data_visualizada_obj}")
+    print(f"DEBUG - Data atual (primeiro dia do mês): {hoje.replace(day=1)}")
+    print(f"DEBUG - Condição para mostrar projeções: {mostrar_projecoes and data_visualizada_obj >= hoje.replace(day=1)}")
+    
+    if mostrar_projecoes and data_visualizada_obj >= hoje.replace(day=1):
+        print(f"Gerando projeções para mês futuro: {mes_atual}/{ano_atual}")
+        
+        # Obter projeções para este mês específico
+        primeiro_dia_mes = datetime(ano_atual, mes_atual, 1)
+        if mes_atual == 12:
+            ultimo_dia_mes = datetime(ano_atual + 1, 1, 1) - timedelta(days=1)
+        else:
+            ultimo_dia_mes = datetime(ano_atual, mes_atual + 1, 1) - timedelta(days=1)
+        
+        # Obter recorrências ativas
+        recorrentes_ativas = TransacaoRecorrente.query.filter_by(
+            status=StatusRecorrencia.ATIVA, 
+            user_id=current_user.id
+        ).all()
+        
+        # ID temporário para projeções (negativo para evitar conflitos)
+        next_temp_id = -1
+        
+        print(f"DEBUG - Total de recorrências ativas: {len(recorrentes_ativas)}")
+        
+        for recorrente in recorrentes_ativas:
+            print(f"DEBUG - Processando recorrência: {recorrente.id} - {recorrente.descricao}")
+            
+            # Gerar transações projetadas usando o método atualizado (apenas projeções)
+            transacoes_projetadas = recorrente.gerar_transacoes_pendentes(meses_futuros=6, apenas_projetar=True)
+            
+            # Filtrar apenas as transações deste mês
+            for projecao in transacoes_projetadas:
+                if primeiro_dia_mes <= projecao.data_transacao <= ultimo_dia_mes:
+                    projecoes.append(projecao)
+                    print(f"DEBUG - Projeção adicionada: {projecao.descricao} para {projecao.data_transacao}")
+    
+    # Paginar transações do banco de dados
+    transacoes_pagination = query_final.paginate(
         page=page,
         per_page=per_page,
         error_out=False
     )
+    
+    # Combinar transações do banco com projeções
+    transacoes_combinadas = list(transacoes_pagination.items)
+    
+    # Adicionar flag is_projetada=False para transações reais
+    for transacao in transacoes_combinadas:
+        transacao.is_projetada = False
+    
+    # Adicionar projeções se houver espaço na página atual
+    print(f"DEBUG - Total de projeções geradas: {len(projecoes)}")
+    
+    if projecoes:
+        print(f"DEBUG - Projeções encontradas: {len(projecoes)}")
+        
+        # Ordenar projeções por data
+        projecoes.sort(key=lambda x: x.data_transacao)
+        
+        # Adicionar projeções à lista combinada
+        transacoes_combinadas.extend(projecoes)
+        
+        # Reordenar a lista combinada por data (mais recente primeiro)
+        transacoes_combinadas.sort(key=lambda x: x.data_transacao, reverse=True)
+        
+        # Atualizar total de itens na paginação para incluir projeções
+        transacoes_pagination.total += len(projecoes)
+        
+        print(f"DEBUG - Lista final: {len(transacoes_combinadas)} transações, das quais {len(projecoes)} são projeções")
+        
+        # Listar as projeções para debug
+        for p in projecoes:
+            print(f"DEBUG - Projeção: ID={p.id}, Data={p.data_transacao}, Valor={p.valor}, Descrição={p.descricao}")
+    else:
+        print("DEBUG - Nenhuma projeção gerada")
     
     # Verificar se estamos próximos ao fim das transações recorrentes e gerar mais se necessário
     # CRÍTICO: Esta é a parte que garante a geração contínua de transações
@@ -1233,7 +1321,7 @@ def transacoes():
     per_page_options = [opt for opt in per_page_options if opt <= app.config['TRANSACOES_PER_PAGE_MAX']]
     
     return render_template('transacoes.html', 
-                         transacoes=transacoes_pagination.items,
+                         transacoes=transacoes_combinadas,
                          pagination=transacoes_pagination,
                          categorias=categorias,
                          contas=contas,
@@ -1249,6 +1337,240 @@ def transacoes():
                              'data_inicio': data_inicio,
                              'data_fim': data_fim
                          })
+                         
+@app.route('/confirmar-transacao/<int:recorrencia_id>/<data_transacao>')
+@login_required
+def exibir_confirmacao_transacao(recorrencia_id, data_transacao):
+    """Exibe a página de confirmação para uma transação projetada"""
+    # Buscar a recorrência
+    recorrencia = TransacaoRecorrente.query.filter_by(
+        id=recorrencia_id, 
+        user_id=current_user.id
+    ).first_or_404()
+    
+    # Converter a data para objeto datetime
+    try:
+        data = datetime.strptime(data_transacao, '%Y-%m-%d')
+    except ValueError:
+        flash('Data inválida', 'danger')
+        return redirect(url_for('transacoes'))
+    
+    # Verificar se já existe uma transação para esta data
+    transacao_existente = Transacao.query.filter_by(
+        recorrencia_id=recorrencia_id,
+        data_transacao=data
+    ).first()
+    
+    if transacao_existente:
+        flash('Esta transação já foi confirmada anteriormente', 'warning')
+        return redirect(url_for('transacoes'))
+    
+    # Criar transação projetada (não salva no banco)
+    transacao = Transacao(
+        id=-1,  # ID temporário
+        descricao=recorrencia.descricao,
+        valor=recorrencia.valor,
+        tipo=recorrencia.tipo,
+        data_transacao=data,
+        categoria_id=recorrencia.categoria_id,
+        conta_id=recorrencia.conta_id,
+        recorrencia_id=recorrencia_id,
+        user_id=current_user.id
+    )
+    
+    # Carregar categoria e conta para exibição
+    transacao.categoria = recorrencia.categoria
+    transacao.conta = recorrencia.conta
+    
+    # Salvar URL de redirecionamento para retornar após a confirmação
+    redirect_url = request.args.get('redirect_url', url_for('transacoes'))
+    
+    return render_template('confirmar_transacao.html', 
+                          transacao=transacao,
+                          redirect_url=redirect_url)
+
+@app.route('/confirmar-transacao', methods=['POST'])
+@login_required
+def confirmar_transacao():
+    """Confirma uma transação projetada, salvando-a no banco de dados"""
+    # Obter dados do formulário
+    recorrencia_id = request.form.get('recorrencia_id', type=int)
+    data_transacao = request.form.get('data_transacao')
+    confirmo = request.form.get('confirmo')
+    redirect_url = request.form.get('redirect_url', url_for('transacoes'))
+    
+    # Validar dados
+    if not recorrencia_id or not data_transacao or not confirmo:
+        flash('Dados incompletos para confirmar a transação', 'danger')
+        return redirect(redirect_url)
+    
+    # Buscar a recorrência
+    recorrencia = TransacaoRecorrente.query.filter_by(
+        id=recorrencia_id, 
+        user_id=current_user.id
+    ).first_or_404()
+    
+    # Converter a data para objeto datetime
+    try:
+        data = datetime.strptime(data_transacao, '%Y-%m-%d')
+    except ValueError:
+        flash('Data inválida', 'danger')
+        return redirect(redirect_url)
+    
+    # Verificar se já existe uma transação para esta data
+    transacao_existente = Transacao.query.filter_by(
+        recorrencia_id=recorrencia_id,
+        data_transacao=data
+    ).first()
+    
+    if transacao_existente:
+        flash('Esta transação já foi confirmada anteriormente', 'warning')
+        return redirect(redirect_url)
+    
+    # Criar nova transação real
+    nova_transacao = Transacao(
+        descricao=recorrencia.descricao,
+        valor=recorrencia.valor,
+        tipo=recorrencia.tipo,
+        data_transacao=data,
+        categoria_id=recorrencia.categoria_id,
+        conta_id=recorrencia.conta_id,
+        recorrencia_id=recorrencia_id,
+        user_id=current_user.id
+    )
+    
+    # Salvar no banco de dados
+    try:
+        db.session.add(nova_transacao)
+        
+        # Atualizar contador de parcelas geradas para recorrências parceladas
+        if recorrencia.is_parcelada:
+            recorrencia.parcelas_geradas += 1
+            # Verificar se atingiu o total de parcelas
+            if recorrencia.parcelas_geradas >= recorrencia.total_parcelas:
+                recorrencia.status = StatusRecorrencia.FINALIZADA
+        
+        db.session.commit()
+        flash('Transação confirmada com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao confirmar transação: {str(e)}', 'danger')
+    
+    return redirect(redirect_url)
+
+@app.route('/api/consolidar-projecoes', methods=['POST'])
+@login_required
+def api_consolidar_projecoes():
+    """API para consolidar múltiplas projeções de uma vez"""
+    # Receber dados do formulário
+    dados = request.get_json()
+    
+    if not dados or 'projecoes_ids' not in dados:
+        return jsonify({'success': False, 'message': 'Dados inválidos'})
+    
+    projecoes_ids = dados.get('projecoes_ids', [])
+    
+    if not projecoes_ids:
+        return jsonify({'success': False, 'message': 'Nenhuma projeção selecionada'})
+    
+    # Contador de transações processadas com sucesso
+    transacoes_confirmadas = 0
+    erros = []
+    
+    # Processar cada projeção
+    for projecao_id in projecoes_ids:
+        try:
+            # Obter os dados da projeção
+            projecao_id_abs = abs(int(projecao_id))
+            recorrencia_id = dados.get(f'recorrencia_{projecao_id_abs}')
+            data_transacao = dados.get(f'data_{projecao_id_abs}')
+            
+            if not recorrencia_id or not data_transacao:
+                erros.append(f"Dados incompletos para projeção {projecao_id}")
+                continue
+            
+            # Buscar a recorrência
+            recorrencia = TransacaoRecorrente.query.filter_by(
+                id=recorrencia_id, 
+                user_id=current_user.id
+            ).first()
+            
+            if not recorrencia:
+                erros.append(f"Recorrência {recorrencia_id} não encontrada")
+                continue
+            
+            # Converter a data para objeto datetime
+            try:
+                data = datetime.strptime(data_transacao, '%Y-%m-%d')
+            except ValueError:
+                erros.append(f"Data inválida: {data_transacao}")
+                continue
+            
+            # Verificar se já existe uma transação para esta data
+            transacao_existente = Transacao.query.filter_by(
+                recorrencia_id=recorrencia_id,
+                data_transacao=data
+            ).first()
+            
+            if transacao_existente:
+                erros.append(f"Transação para {data_transacao} já existe")
+                continue
+            
+            # Criar nova transação real
+            nova_transacao = Transacao(
+                descricao=recorrencia.descricao,
+                valor=recorrencia.valor,
+                tipo=recorrencia.tipo,
+                data_transacao=data,
+                categoria_id=recorrencia.categoria_id,
+                conta_id=recorrencia.conta_id,
+                recorrencia_id=recorrencia_id,
+                user_id=current_user.id
+            )
+            
+            # Salvar no banco de dados
+            db.session.add(nova_transacao)
+            
+            # Atualizar contador de parcelas geradas para recorrências parceladas
+            if recorrencia.is_parcelada:
+                recorrencia.parcelas_geradas += 1
+                # Verificar se atingiu o total de parcelas
+                if recorrencia.parcelas_geradas >= recorrencia.total_parcelas:
+                    recorrencia.status = StatusRecorrencia.FINALIZADA
+            
+            # Incrementar contador de sucesso
+            transacoes_confirmadas += 1
+            
+        except Exception as e:
+            erros.append(f"Erro ao processar projeção {projecao_id}: {str(e)}")
+    
+    # Commit das alterações se houver transações confirmadas
+    if transacoes_confirmadas > 0:
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False, 
+                'message': f'Erro ao salvar as transações: {str(e)}'
+            })
+    
+    # Construir mensagem de resposta
+    if transacoes_confirmadas == 0:
+        return jsonify({
+            'success': False,
+            'message': f'Nenhuma transação confirmada. Erros: {", ".join(erros)}'
+        })
+    elif erros:
+        return jsonify({
+            'success': True,
+            'message': f'{transacoes_confirmadas} transação(ões) confirmada(s) com {len(erros)} erro(s)'
+        })
+    else:
+        return jsonify({
+            'success': True,
+            'message': f'{transacoes_confirmadas} transação(ões) confirmada(s) com sucesso!'
+        })
 
 @app.route('/nova-transacao', methods=['GET', 'POST'])
 @login_required
@@ -1300,13 +1622,17 @@ def nova_transacao():
                 
                 # Se tem data_fim, usar isso como limite
                 if recorrente.data_fim:
-                    # Gerar todas as transações até a data_fim
-                    transacoes_geradas = recorrente.gerar_transacoes_pendentes()
-                    mensagem = f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}.'
+                    # Gerar transações passadas e projetar futuras
+                    transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=True)
+                    transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
+                    projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
+                    mensagem = f'Transação recorrente criada! {len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}.'
                 else:
                     # Gerar transações para os próximos meses
-                    transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
-                    mensagem = f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s) para os próximos {meses_futuros} meses.'
+                    transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros, apenas_projetar=True)
+                    transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
+                    projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
+                    mensagem = f'Transação recorrente criada! {len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) para os próximos {meses_futuros} meses.'
                 
                 flash(mensagem, 'success')
             else:
@@ -2047,13 +2373,17 @@ def nova_transacao_recorrente():
             
             # Se tem data_fim, usar isso como limite
             if recorrente.data_fim:
-                # Gerar todas as transações até a data_fim
-                transacoes_geradas = recorrente.gerar_transacoes_pendentes()
-                mensagem = f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}.'
+                # Gerar transações passadas e projetar futuras
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=True)
+                transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
+                projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
+                mensagem = f'Transação recorrente criada! {len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}.'
             else:
                 # Gerar transações para os próximos meses
-                transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
-                mensagem = f'Transação recorrente criada! {len(transacoes_geradas)} transação(ões) gerada(s) para os próximos {meses_futuros} meses.'
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros, apenas_projetar=True)
+                transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
+                projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
+                mensagem = f'Transação recorrente criada! {len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) para os próximos {meses_futuros} meses.'
             
             flash(mensagem, 'success')
             return redirect(url_for('transacoes_recorrentes'))
@@ -2124,13 +2454,17 @@ def gerar_transacoes_pendentes(recorrente_id):
         
         # Se tem data_fim, usar isso como limite
         if recorrente.data_fim:
-            # Gerar todas as transações até a data_fim
-            transacoes_geradas = recorrente.gerar_transacoes_pendentes()
-            mensagem = f'{len(transacoes_geradas)} transação(ões) gerada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}'
+            # Gerar transações passadas e projetar futuras
+            transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=True)
+            transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
+            projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
+            mensagem = f'{len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}'
         else:
             # Gerar transações para os próximos meses
-            transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
-            mensagem = f'{len(transacoes_geradas)} transação(ões) gerada(s) para os próximos {meses_futuros} meses'
+            transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros, apenas_projetar=True)
+            transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
+            projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
+            mensagem = f'{len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) para os próximos {meses_futuros} meses'
         
         return jsonify({
             'success': True,
@@ -2188,6 +2522,216 @@ def api_transacoes_recorrentes():
     recorrentes = TransacaoRecorrente.query.filter_by(user_id=current_user.id).all()
     return jsonify([r.to_dict() for r in recorrentes])
 
+@app.route('/api/projetar-transacoes-futuras')
+@login_required
+def projetar_transacoes_futuras():
+    """Projeta transações futuras sem salvá-las no banco de dados"""
+    try:
+        # Parâmetro para número de meses
+        meses_futuros = request.args.get('meses', 24, type=int)
+        
+        # Validar meses_futuros (mínimo 1, máximo 60)
+        if meses_futuros < 1:
+            meses_futuros = 1
+        elif meses_futuros > 60:
+            meses_futuros = 60
+        
+        recorrentes_ativas = TransacaoRecorrente.query.filter_by(
+            status=StatusRecorrencia.ATIVA, 
+            user_id=current_user.id
+        ).all()
+        
+        # Lista para armazenar todas as projeções
+        projecoes = []
+        # ID temporário para projeções (negativo para evitar conflitos)
+        next_temp_id = -1
+        
+        # Data atual para separar transações existentes de projeções
+        hoje = datetime.utcnow().date()
+        
+        for recorrente in recorrentes_ativas:
+            # Determinar a data limite de projeção
+            if recorrente.data_fim:
+                data_limite = recorrente.data_fim
+            else:
+                data_limite = datetime.utcnow() + relativedelta(months=meses_futuros)
+            
+            # Obter a última transação existente
+            ultima_transacao = Transacao.query.filter_by(
+                recorrencia_id=recorrente.id
+            ).order_by(Transacao.data_transacao.desc()).first()
+            
+            # Determinar a data da próxima projeção
+            if ultima_transacao:
+                proxima_data = recorrente.calcular_proxima_data(ultima_transacao.data_transacao)
+            else:
+                proxima_data = recorrente.data_inicio
+            
+            # Gerar projeções
+            while proxima_data and proxima_data <= data_limite:
+                # Verificar se já é uma transação consolidada
+                transacao_existente = Transacao.query.filter_by(
+                    recorrencia_id=recorrente.id,
+                    data_transacao=proxima_data
+                ).first()
+                
+                if transacao_existente:
+                    # Adicionar à lista como consolidada
+                    projecoes.append({
+                        'id': transacao_existente.id,
+                        'descricao': transacao_existente.descricao,
+                        'valor': transacao_existente.valor,
+                        'tipo': transacao_existente.tipo.value,
+                        'data': transacao_existente.data_transacao.strftime('%Y-%m-%d'),
+                        'categoria': transacao_existente.categoria.nome,
+                        'categoria_cor': transacao_existente.categoria.cor,
+                        'conta': transacao_existente.conta.nome,
+                        'conta_cor': transacao_existente.conta.cor,
+                        'recorrencia_id': recorrente.id,
+                        'status': 'consolidada'
+                    })
+                else:
+                    # Adicionar como projeção não consolidada
+                    # Apenas se a data for futura
+                    if proxima_data.date() >= hoje:
+                        projecoes.append({
+                            'id': next_temp_id,
+                            'descricao': recorrente.descricao,
+                            'valor': recorrente.valor,
+                            'tipo': recorrente.tipo.value,
+                            'data': proxima_data.strftime('%Y-%m-%d'),
+                            'categoria': recorrente.categoria.nome,
+                            'categoria_cor': recorrente.categoria.cor,
+                            'conta': recorrente.conta.nome,
+                            'conta_cor': recorrente.conta.cor,
+                            'recorrencia_id': recorrente.id,
+                            'status': 'projetada'
+                        })
+                        next_temp_id -= 1
+                
+                # Calcular próxima data
+                proxima_data = recorrente.calcular_proxima_data(proxima_data)
+                
+                # Verificar se atingimos o limite de parcelas para recorrências parceladas
+                if recorrente.is_parcelada:
+                    parcelas_projetadas = len([p for p in projecoes if p['recorrencia_id'] == recorrente.id])
+                    if recorrente.parcelas_geradas + parcelas_projetadas >= recorrente.total_parcelas:
+                        break
+        
+        return jsonify({
+            'success': True,
+            'projecoes': projecoes,
+            'total_projecoes': len(projecoes),
+            'projecoes_consolidadas': len([p for p in projecoes if p['status'] == 'consolidada']),
+            'projecoes_pendentes': len([p for p in projecoes if p['status'] == 'projetada']),
+            'meses_futuros': meses_futuros
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/consolidar-projecoes', methods=['POST'])
+@login_required
+def consolidar_projecoes():
+    """Consolida projeções selecionadas, salvando-as no banco de dados"""
+    try:
+        data = request.json
+        projecoes_ids = data.get('projecoes_ids', [])
+        
+        app.logger.info(f"Solicitação para consolidar projeções: {projecoes_ids}")
+        
+        if not projecoes_ids:
+            app.logger.warning("Nenhuma projeção selecionada para consolidação")
+            return jsonify({'success': False, 'message': 'Nenhuma projeção selecionada'}), 400
+        
+        # Filtrar apenas IDs negativos (projeções não consolidadas)
+        projecoes_ids = [int(pid) for pid in projecoes_ids if int(pid) < 0]
+        
+        if not projecoes_ids:
+            app.logger.warning("Todas as projeções selecionadas já estão consolidadas")
+            return jsonify({'success': False, 'message': 'Todas as projeções selecionadas já estão consolidadas'}), 400
+        
+        app.logger.info(f"Projeções válidas para consolidação: {projecoes_ids}")
+        
+        # Lista para armazenar IDs de projeções consolidadas com sucesso
+        consolidadas = []
+        
+        # Para cada ID de projeção, gerar uma nova solicitação para obter os dados atualizados
+        # e criar a transação correspondente
+        for projecao_id in projecoes_ids:
+            # Aqui precisamos dos dados completos da projeção
+            # Como IDs negativos são temporários, precisamos de dados adicionais
+            recorrencia_id = data.get(f'recorrencia_{abs(projecao_id)}')
+            data_projecao = data.get(f'data_{abs(projecao_id)}')
+            
+            # Se não temos os dados completos, vamos tentar a próxima abordagem
+            if not recorrencia_id or not data_projecao:
+                # Tentar buscar da lista completa de projeções
+                projecoes_data = data.get('projecoes_data', [])
+                projecao = next((p for p in projecoes_data if p.get('id') == projecao_id), None)
+                
+                if projecao:
+                    recorrencia_id = projecao.get('recorrencia_id')
+                    data_projecao = projecao.get('data')
+            
+            # Se ainda não temos os dados, pular esta projeção
+            if not recorrencia_id or not data_projecao:
+                app.logger.warning(f"Dados incompletos para projeção ID {projecao_id}, pulando")
+                continue
+                
+            # Buscar a recorrência
+            recorrente = TransacaoRecorrente.query.get(recorrencia_id)
+            if not recorrente or recorrente.user_id != current_user.id:
+                app.logger.warning(f"Recorrência ID {recorrencia_id} não encontrada ou não pertence ao usuário atual")
+                continue
+            
+            # Verificar se já existe uma transação nesta data para esta recorrência
+            data_dt = datetime.strptime(data_projecao, '%Y-%m-%d')
+            transacao_existente = Transacao.query.filter_by(
+                recorrencia_id=recorrencia_id,
+                data_transacao=data_dt
+            ).first()
+            
+            # Se já existe, pular
+            if transacao_existente:
+                app.logger.warning(f"Já existe uma transação para recorrência ID {recorrencia_id} na data {data_projecao}")
+                continue
+                
+            # Criar transação real
+            nova_transacao = Transacao(
+                descricao=recorrente.descricao,
+                valor=recorrente.valor,
+                tipo=recorrente.tipo,
+                data_transacao=data_dt,
+                categoria_id=recorrente.categoria_id,
+                conta_id=recorrente.conta_id,
+                recorrencia_id=recorrente.id,
+                user_id=current_user.id
+            )
+            
+            db.session.add(nova_transacao)
+            consolidadas.append(projecao_id)
+            app.logger.info(f"Projeção ID {projecao_id} consolidada com sucesso para data {data_projecao}")
+            
+            # Atualizar contador de parcelas se for parcelada
+            if recorrente.is_parcelada:
+                recorrente.parcelas_geradas += 1
+                app.logger.info(f"Atualizado contador de parcelas: {recorrente.parcelas_geradas}/{recorrente.total_parcelas}")
+                if recorrente.parcelas_geradas >= recorrente.total_parcelas:
+                    recorrente.status = StatusRecorrencia.FINALIZADA
+                    app.logger.info(f"Recorrência parcelada ID {recorrente.id} finalizada")
+        
+        db.session.commit()
+        app.logger.info(f"Consolidação concluída: {len(consolidadas)} projeções consolidadas")
+        
+        return jsonify({
+            'success': True,
+            'message': f'{len(consolidadas)} projeção(ões) consolidada(s) com sucesso',
+            'consolidadas': consolidadas
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/api/gerar-todas-transacoes-pendentes')
 @login_required
 def gerar_todas_transacoes_pendentes():
@@ -2212,11 +2756,11 @@ def gerar_todas_transacoes_pendentes():
         for recorrente in recorrentes_ativas:
             # Se tem data_fim, usar isso como limite
             if recorrente.data_fim:
-                transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=True)
                 recorrentes_com_data_fim += 1
             else:
                 # Gerar transações para os próximos meses
-                transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros, apenas_projetar=True)
             
             total_transacoes_geradas += len(transacoes_geradas)
         

@@ -3,7 +3,26 @@
 {% block title %}Transações - Controle Financeiro{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex                    <thead>
+                        <tr>
+                            <th>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAllProjecoes" onchange="selecionarTodasProjecoes(this.checked)">
+                                    <label class="form-check-label" for="selectAllProjecoes">
+                                        <span class="visually-hidden">Selecionar todas</span>
+                                    </label>
+                                </div>
+                            </th>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Conta</th>
+                            <th>Tags</th>
+                            <th>Tipo</th>
+                            <th class="text-end">Valor</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>ent-between align-items-center mb-4">
     <div>
         <h1 class="h2">Transações</h1>
         <p class="text-muted">Histórico completo de receitas e despesas</p>
@@ -100,6 +119,13 @@
         </span>
     </div>
     <div class="d-flex align-items-center gap-2">
+        <div class="form-check form-switch me-2">
+            <input class="form-check-input" type="checkbox" id="mostrarProjecoes" 
+                   {{ 'checked' if request.args.get('mostrar_projecoes', 'true').lower() == 'true' else '' }}
+                   onchange="toggleProjecoes(this.checked)">
+            <label class="form-check-label" for="mostrarProjecoes">Mostrar Projeções</label>
+        </div>
+        
         <label for="per_page_select" class="form-label mb-0">Mostrar:</label>
         <select class="form-select form-select-sm" id="per_page_select" style="width: auto;" onchange="changePerPage(this.value)">
             {% for option in per_page_options %}
@@ -118,6 +144,7 @@
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
+                            <th>Status</th>
                             <th>Data</th>
                             <th>Descrição</th>
                             <th>Categoria</th>
@@ -130,10 +157,25 @@
                     </thead>
                     <tbody>
                         {% for transacao in transacoes %}
-                        <tr>
+                        <tr class="{{ 'table-light' if transacao.is_projetada }}">
+                            <td>
+                                {% if transacao.is_projetada %}
+                                <!-- Transação projetada -->
+                                <button type="button" class="btn btn-success btn-sm"
+                                        onclick="consolidarProjecao({{ transacao.id }}, {{ transacao.recorrencia_id }}, '{{ transacao.data_transacao.strftime('%Y-%m-%d') }}')"
+                                        title="Clique para consolidar esta transação">
+                                    <i class="fas fa-check me-1"></i>Consolidar
+                                </button>
+                                {% else %}
+                                <span class="badge bg-success">Consolidada</span>
+                                {% endif %}
+                            </td>
                             <td>{{ transacao.data_transacao.strftime('%d/%m/%Y') }}</td>
                             <td>
                                 <strong>{{ transacao.descricao }}</strong>
+                                {% if transacao.is_projetada %}
+                                <span class="badge bg-secondary ms-1">Projetada</span>
+                                {% endif %}
                             </td>
                             <td>
                                 <span class="badge" style="background-color: {{ transacao.categoria.cor }}">
@@ -172,10 +214,13 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group">
+                                    {% if not transacao.is_projetada %}
                                     <a href="{{ url_for('editar_transacao', transacao_id=transacao.id) }}" 
                                        class="btn btn-outline-primary" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </a>
+                                    {% endif %}
+                                    
                                     {% if transacao.is_recorrente %}
                                     <button type="button" class="btn btn-outline-info" 
                                             title="Transação Recorrente - Gerenciar em Recorrentes"
@@ -183,11 +228,14 @@
                                         <i class="fas fa-calendar-alt"></i>
                                     </button>
                                     {% endif %}
+                                    
+                                    {% if not transacao.is_projetada %}
                                     <button type="button" class="btn btn-outline-danger" 
                                             title="{% if transacao.is_recorrente %}Excluir esta transação (a recorrência continuará){% else %}Excluir{% endif %}"
                                             onclick="excluirTransacao({{ transacao.id }}, '{{ transacao.descricao|replace("'", "\\'") }}', {{ 'true' if transacao.is_recorrente else 'false' }})">
                                         <i class="fas fa-trash"></i>
                                     </button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -320,6 +368,56 @@
 
 {% block scripts %}
 <script>
+// Função para consolidar uma projeção única diretamente
+function consolidarProjecao(projecaoId, recorrenciaId, dataProjecao) {
+    // Mostra loading no botão
+    const btn = event.target;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+
+    // Cria FormData para enviar via POST
+    const formData = new FormData();
+    formData.append('recorrencia_id', recorrenciaId);
+    formData.append('data_transacao', dataProjecao);
+    formData.append('confirmo', 'sim');
+
+    // Faz a requisição para consolidar
+    fetch('/confirmar-transacao', {
+        method: 'POST',
+        body: formData
+    })
+    .finally(() => {
+        // Sempre recarrega a página ao finalizar a requisição
+        window.location.reload();
+    });
+}
+
+// Alternar visibilidade das projeções
+function toggleProjecoes(mostrar) {
+    const url = new URL(window.location);
+    url.searchParams.set('mostrar_projecoes', mostrar);
+    url.searchParams.set('page', 1); // Voltar para a primeira página
+    window.location.href = url.toString();
+}
+
+// Mostrar alerta na tela
+function mostrarAlerta(tipo, mensagem) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container-fluid').prepend(alertDiv);
+    
+    // Remover o alerta automaticamente após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
 function excluirTransacao(transacaoId, descricao, isRecorrente) {
     let mensagem = `Tem certeza que deseja excluir a transação "${descricao}"?`;
     
@@ -338,16 +436,16 @@ function excluirTransacao(transacaoId, descricao, isRecorrente) {
         .then(data => {
             if (data.success) {
                 // Mostrar mensagem de sucesso
-                alert(data.message);
+                mostrarAlerta('success', data.message);
                 // Recarregar a página para atualizar a lista
-                location.reload();
+                setTimeout(() => location.reload(), 1500);
             } else {
-                alert('Erro: ' + data.message);
+                mostrarAlerta('danger', 'Erro: ' + data.message);
             }
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao excluir transação');
+            mostrarAlerta('danger', 'Erro ao excluir transação');
         });
     }
 }
@@ -359,15 +457,17 @@ function changePerPage(perPage) {
     window.location.href = url.toString();
 }
 
-// Atualizar campos de data quando um mês específico for selecionado
+// Quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM carregado - Sistema de consolidação direta ativo');
+    
     // Verificar se o formulário tem filtros de data aplicados
     const dataInicio = document.getElementById('data_inicio');
     const dataFim = document.getElementById('data_fim');
     
     // Se as datas estão preenchidas e não foram definidas pelo usuário,
     // destacar que são filtros automáticos do mês
-    if (dataInicio.value && dataFim.value) {
+    if (dataInicio && dataFim && dataInicio.value && dataFim.value) {
         const dataInicioTxt = document.createElement('div');
         dataInicioTxt.className = 'text-info small mt-1';
         dataInicioTxt.textContent = 'Filtro mensal aplicado';
@@ -377,27 +477,31 @@ document.addEventListener('DOMContentLoaded', function() {
             dataInicio.parentNode.appendChild(dataInicioTxt);
         }
     }
-});
-
-// Dados de categorias recebidos do backend
-const categorias = {{ categorias|tojson }};
-const filtroCategoria = {{ filtros.categoria_id|default("null")|tojson }};
-
-// Quando o documento estiver pronto
-document.addEventListener('DOMContentLoaded', function() {
+    
+    // Carregar categorias
     const selectCategoria = document.getElementById('categoria_id');
-    
-    // Limpar o select para garantir que não haja duplicatas
-    selectCategoria.innerHTML = '<option value="">Todas as categorias</option>';
-    
-    // Preencher o select com categorias em formato hierárquico
-    categorias.forEach(categoria => {
-        adicionarCategoriaOption(selectCategoria, categoria, 0);
-    });
-    
-    // Selecionar a categoria filtrada, se houver
-    if (filtroCategoria) {
-        selectCategoria.value = filtroCategoria;
+    if (selectCategoria) {
+        try {
+            // Limpar o select para garantir que não haja duplicatas
+            selectCategoria.innerHTML = '<option value="">Todas as categorias</option>';
+            
+            // Verificar se a variável categorias está definida
+            if (typeof categorias !== 'undefined' && Array.isArray(categorias)) {
+                // Preencher o select com categorias em formato hierárquico
+                categorias.forEach(categoria => {
+                    adicionarCategoriaOption(selectCategoria, categoria, 0);
+                });
+                
+                // Selecionar a categoria filtrada, se houver
+                if (typeof filtroCategoria !== 'undefined' && filtroCategoria) {
+                    selectCategoria.value = filtroCategoria;
+                }
+            } else {
+                console.warn('Variável categorias não definida ou não é um array');
+            }
+        } catch (error) {
+            console.error('Erro ao configurar categorias:', error);
+        }
     }
 });
 

@@ -72,8 +72,8 @@ def gerar_todas_transacoes_recorrentes(app):
             # Processar cada recorrência
             for recorrente in recorrentes_ativas:
                 try:
-                    # Se a recorrência tem data_fim, gerar todas as transações até essa data
-                    transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros)
+                    # No caso do scheduler (que gera automaticamente), não projetamos as transações, criamos direto
+                    transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros, apenas_projetar=False)
                     total_transacoes_geradas += len(transacoes_geradas)
                     
                     if len(transacoes_geradas) > 0:

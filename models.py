@@ -384,18 +384,21 @@ class TransacaoRecorrente(db.Model):
         db.session.commit()
         return nova_transacao
     
-    def gerar_transacoes_pendentes(self, meses_futuros=24):
+    def gerar_transacoes_pendentes(self, meses_futuros=24, apenas_projetar=False):
         """
         Gera todas as transações pendentes até a data_fim, se definida,
         ou até o número de meses futuros especificado.
         
         Args:
             meses_futuros (int): Quantos meses para frente gerar (padrão: 24)
+            apenas_projetar (bool): Se True, apenas projeta as transações futuras sem salvá-las no banco
             
         Returns:
             Lista de transações geradas
         """
         transacoes_geradas = []
+        # Rastrear datas já processadas para evitar duplicação
+        datas_processadas = set()
         hoje = datetime.utcnow()
         
         # Verificar se a recorrência já foi finalizada manualmente ou por parcelas
@@ -428,6 +431,12 @@ class TransacaoRecorrente(db.Model):
         # CRUCIAL: Determinar a próxima data a partir da qual devemos gerar transações
         proxima_data = None
         
+        # Adicionar todas as datas de transações existentes ao conjunto para evitar duplicação
+        for transacao in self.transacoes:
+            data_str = transacao.data_transacao.strftime('%Y-%m-%d')
+            datas_processadas.add(data_str)
+            print(f"Transação existente encontrada para data {data_str}")
+        
         if self.transacoes:
             try:
                 # Obter a última transação gerada
@@ -441,45 +450,91 @@ class TransacaoRecorrente(db.Model):
             proxima_data = self.data_inicio
             print(f"Primeira transação, usando data_inicio: {proxima_data}")
         
-        # NUNCA verificar se já existem transações até a data_limite
-        # Sempre gerar transações independentemente das existentes
-        
         # Loop de geração de transações
-        max_iteracoes = 1000  # Aumentado para garantir geração adequada
+        max_iteracoes = 1000  # Limitar o número de iterações como segurança
         iteracoes = 0
+        
+        # Definir o limite para transações persistidas vs. projetadas
+        # Gravar apenas o mês atual e passado, projetar o futuro
+        final_mes_atual = (hoje.replace(day=1) + relativedelta(months=1) - timedelta(days=1)).date()
         
         # Continuamos enquanto:
         # 1. A recorrência não estiver finalizada
         # 2. Não atingirmos o limite máximo de iterações (segurança)
-        while not self.is_finalizada and iteracoes < max_iteracoes:
+        # 3. A data da próxima transação não exceder o limite
+        while not self.is_finalizada and iteracoes < max_iteracoes and proxima_data <= data_limite:
             iteracoes += 1
             
-            # Calcular data da próxima transação
-            if iteracoes > 1 and self.transacoes:  # Já calculamos proxima_data para a primeira iteração
-                try:
-                    ultima_transacao = max(self.transacoes, key=lambda t: t.data_transacao)
-                    proxima_data = self.calcular_proxima_data(ultima_transacao.data_transacao)
-                    print(f"Iteração {iteracoes}: Próxima data calculada: {proxima_data}")
-                except Exception as e:
-                    print(f"Erro ao calcular próxima data: {str(e)}")
+            # Verificar se a data já foi processada (para evitar duplicatas)
+            data_str = proxima_data.strftime('%Y-%m-%d')
+            if data_str in datas_processadas:
+                print(f"Data {data_str} já processada, avançando para próxima")
+                proxima_data = self.calcular_proxima_data(proxima_data)
+                continue
+            
+            # Marcar a data como processada
+            datas_processadas.add(data_str)
+            
+            # NOVA LÓGICA: Determinar se é transação futura (após final do mês atual)
+            data_transacao_date = proxima_data.date() if isinstance(proxima_data, datetime) else proxima_data
+            
+            # Verificar se já existe uma transação nesta data para esta recorrência
+            transacao_existente = Transacao.query.filter_by(
+                recorrencia_id=self.id,
+                data_transacao=proxima_data
+            ).first()
+            
+            if transacao_existente:
+                print(f"Transação já existe para {proxima_data}, pulando")
+                # Avançar para a próxima data
+                proxima_data = self.calcular_proxima_data(proxima_data)
+                continue
+                
+            # Determinar se deve persistir ou apenas projetar
+            is_futuro = data_transacao_date > final_mes_atual
+            
+            # Projetar transações futuras OU se o parâmetro apenas_projetar estiver ativado
+            if is_futuro or apenas_projetar:
+                # Criar transação virtual (não salvar no banco)
+                print(f"Criando PROJEÇÃO para data {proxima_data} (não será salva no banco)")
+                
+                # Criar transação virtual (não salva no banco)
+                projecao = Transacao(
+                    id=-(100000 + self.id*1000 + iteracoes),  # ID negativo para identificar como projeção
+                    descricao=self.descricao,
+                    valor=self.valor,
+                    tipo=self.tipo,
+                    data_transacao=proxima_data,
+                    categoria_id=self.categoria_id,
+                    conta_id=self.conta_id,
+                    recorrencia_id=self.id,
+                    user_id=self.user_id
+                )
+                
+                # Marcar como projeção
+                projecao.is_projetada = True
+                
+                # Adicionar categoria e conta para exibição
+                projecao.categoria = self.categoria
+                projecao.conta = self.conta
+                
+                print(f"Nova projeção criada: {projecao.descricao} - {projecao.data_transacao}")
+                transacoes_geradas.append(projecao)
+            else:
+                # Gerar transação normal e salvar no banco (apenas mês atual e passado)
+                print(f"Gerando transação real para data {proxima_data}")
+                nova_transacao = self.gerar_proxima_transacao()
+                
+                if nova_transacao:
+                    print(f"Nova transação gerada: {nova_transacao.descricao} - {nova_transacao.data_transacao}")
+                    transacoes_geradas.append(nova_transacao)
+                else:
+                    # Se não conseguiu gerar mais transações, a recorrência foi finalizada
+                    print("Não foi possível gerar mais transações. Recorrência finalizada.")
                     break
             
-            # Verificar se estamos dentro do limite de geração (data_fim ou meses_futuros)
-            if proxima_data > data_limite:
-                print(f"Próxima data {proxima_data} excede data limite {data_limite}")
-                break
-            
-            # CRÍTICO: SEMPRE tentar gerar a próxima transação independentemente de qualquer outra verificação
-            print(f"Gerando transação para data {proxima_data}")
-            nova_transacao = self.gerar_proxima_transacao()
-            
-            if nova_transacao:
-                print(f"Nova transação gerada: {nova_transacao.descricao} - {nova_transacao.data_transacao}")
-                transacoes_geradas.append(nova_transacao)
-            else:
-                # Se não conseguiu gerar mais transações, a recorrência foi finalizada
-                print("Não foi possível gerar mais transações. Recorrência finalizada.")
-                break
+            # Avançar para a próxima data
+            proxima_data = self.calcular_proxima_data(proxima_data)
         
         if iteracoes >= max_iteracoes:
             print(f"ATENÇÃO: Limite máximo de iterações atingido para recorrência {self.id}")
@@ -523,6 +578,10 @@ class Transacao(db.Model):
     conta_id = db.Column(db.Integer, db.ForeignKey('conta.id'), nullable=False)
     recorrencia_id = db.Column(db.Integer, db.ForeignKey('transacao_recorrente.id'), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    
+    # Flag para indicar se a transação é uma projeção (não está no banco ainda)
+    # Este atributo é calculado dinamicamente e não salvo no banco
+    is_projetada = False
     
     # Relacionamento com tags
     tags = db.relationship('Tag', secondary=transacao_tags, back_populates='transacoes')

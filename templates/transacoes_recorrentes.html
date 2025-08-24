@@ -7,19 +7,72 @@
     <h1 class="h2">Transações Recorrentes</h1>
     <div>
         <div class="btn-group me-2">
-            <button class="btn btn-outline-primary" onclick="gerarTodasPendentes(12)">
-                <i class="fas fa-sync-alt"></i> Gerar 12 Meses
+            <button class="btn btn-outline-primary" onclick="visualizarProjecoes(12)">
+                <i class="fas fa-eye"></i> Projetar 12 Meses
             </button>
-            <button class="btn btn-outline-primary" onclick="gerarTodasPendentes(24)">
-                <i class="fas fa-sync-alt"></i> Gerar 24 Meses
+            <button class="btn btn-outline-primary" onclick="visualizarProjecoes(24)">
+                <i class="fas fa-eye"></i> Projetar 24 Meses
             </button>
-            <button class="btn btn-outline-primary" onclick="gerarTodasPendentes(36)">
-                <i class="fas fa-sync-alt"></i> Gerar 36 Meses
+            <button class="btn btn-outline-primary" onclick="visualizarProjecoes(36)">
+                <i class="fas fa-eye"></i> Projetar 36 Meses
             </button>
         </div>
         <a href="{{ url_for('nova_transacao_recorrente') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Nova Transação Recorrente
         </a>
+    </div>
+</div>
+
+<!-- Modal de Projeções Futuras -->
+<div class="modal fade" id="projecoesModal" tabindex="-1" aria-labelledby="projecoesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="projecoesModalLabel">Projeções Futuras</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="mostrarApenasNaoConsolidadas">
+                            <label class="form-check-label" for="mostrarApenasNaoConsolidadas">Mostrar apenas não consolidadas</label>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-success btn-sm" onclick="consolidarSelecionadas()">
+                            <i class="fas fa-check-double"></i> Consolidar Selecionadas
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover" id="tabelaProjecoes">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selecionarTodas" onchange="toggleSelecionarTodas()">
+                                    </div>
+                                </th>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Conta</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projecoesTableBody">
+                            <!-- Projeções serão carregadas aqui via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -159,27 +212,204 @@
 </style>
 
 <script>
+// Armazenamento local para projeções
+let projecoesData = [];
+
+// Visualizar projeções futuras para todas as recorrências
+function visualizarProjecoes(meses=12) {
+    fetch(`/api/projetar-transacoes-futuras?meses=${meses}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Guardar dados para uso posterior
+            projecoesData = data.projecoes;
+            
+            // Renderizar projeções na tabela
+            renderizarProjecoes(projecoesData);
+            
+            // Mostrar o modal
+            const projecoesModal = new bootstrap.Modal(document.getElementById('projecoesModal'));
+            projecoesModal.show();
+        } else {
+            showAlert('danger', data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Erro ao projetar transações: ' + error);
+    });
+}
+
+// Renderizar projeções na tabela
+function renderizarProjecoes(projecoes) {
+    const tbody = document.getElementById('projecoesTableBody');
+    tbody.innerHTML = '';
+    
+    if (projecoes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhuma projeção encontrada</td></tr>';
+        return;
+    }
+    
+    // Ordenar por data
+    projecoes.sort((a, b) => new Date(a.data) - new Date(b.data));
+    
+    // Filtrar se necessário
+    const mostrarApenasNaoConsolidadas = document.getElementById('mostrarApenasNaoConsolidadas').checked;
+    const projecoesFiltradas = mostrarApenasNaoConsolidadas 
+        ? projecoes.filter(p => p.status === 'projetada')
+        : projecoes;
+    
+    // Renderizar cada linha
+    projecoesFiltradas.forEach(projecao => {
+        const tr = document.createElement('tr');
+        tr.className = projecao.status === 'consolidada' ? 'table-light' : '';
+        
+        const dataFormatada = new Date(projecao.data).toLocaleDateString('pt-BR');
+        const valorFormatado = parseFloat(projecao.valor).toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+        
+        tr.innerHTML = `
+            <td>
+                <div class="form-check">
+                    <input class="form-check-input checkbox-projecao" type="checkbox" 
+                           value="${projecao.id}" 
+                           ${projecao.status === 'consolidada' ? 'disabled' : ''}>
+                </div>
+            </td>
+            <td>${dataFormatada}</td>
+            <td>${projecao.descricao}</td>
+            <td>
+                <span class="badge" style="background-color: ${projecao.categoria_cor}">
+                    ${projecao.categoria}
+                </span>
+            </td>
+            <td>
+                <span class="badge" style="background-color: ${projecao.conta_cor}">
+                    ${projecao.conta}
+                </span>
+            </td>
+            <td class="text-${projecao.tipo === 'receita' ? 'success' : 'danger'}">
+                ${valorFormatado}
+            </td>
+            <td>
+                <span class="badge ${projecao.status === 'consolidada' ? 'bg-success' : 'bg-secondary'}">
+                    ${projecao.status === 'consolidada' ? 'Consolidada' : 'Projetada'}
+                </span>
+            </td>
+            <td>
+                ${projecao.status === 'projetada' ? 
+                    `<button class="btn btn-sm btn-success" onclick="consolidarUnica(${projecao.id})">
+                        <i class="fas fa-check"></i>
+                    </button>` : 
+                    `<span class="text-muted"><i class="fas fa-check-double"></i></span>`
+                }
+            </td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+}
+
+// Consolidar projeções selecionadas
+function consolidarSelecionadas() {
+    const checkboxes = document.querySelectorAll('.checkbox-projecao:checked');
+    if (checkboxes.length === 0) {
+        showAlert('warning', 'Selecione pelo menos uma projeção para consolidar');
+        return;
+    }
+    
+    const projecoesIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    // Preparar dados completos das projeções selecionadas
+    const projecoesSelecionadas = projecoesIds.map(id => {
+        return projecoesData.find(p => p.id.toString() === id.toString());
+    }).filter(p => p); // Remover undefined
+    
+    // Criar payload com IDs e dados completos
+    const payload = {
+        projecoes_ids: projecoesIds,
+        projecoes_data: projecoesSelecionadas
+    };
+    
+    // Adicionar dados individuais para cada projeção
+    projecoesIds.forEach(id => {
+        const projecao = projecoesData.find(p => p.id.toString() === id.toString());
+        if (projecao) {
+            payload[`recorrencia_${Math.abs(id)}`] = projecao.recorrencia_id;
+            payload[`data_${Math.abs(id)}`] = projecao.data;
+        }
+    });
+    
+    consolidarProjecoes(payload);
+}
+
+// Consolidar uma única projeção
+function consolidarUnica(projecaoId) {
+    const projecao = projecoesData.find(p => p.id === projecaoId);
+    if (!projecao) {
+        showAlert('danger', 'Projeção não encontrada');
+        return;
+    }
+    
+    const payload = {
+        projecoes_ids: [projecaoId],
+        projecoes_data: [projecao],
+        [`recorrencia_${Math.abs(projecaoId)}`]: projecao.recorrencia_id,
+        [`data_${Math.abs(projecaoId)}`]: projecao.data
+    };
+    
+    consolidarProjecoes(payload);
+}
+
+// Enviar solicitação para consolidar projeções
+function consolidarProjecoes(payload) {
+    fetch('/api/consolidar-projecoes', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            // Atualizar dados locais
+            data.consolidadas.forEach(id => {
+                const projecao = projecoesData.find(p => p.id.toString() === id.toString());
+                if (projecao) projecao.status = 'consolidada';
+            });
+            // Re-renderizar tabela
+            renderizarProjecoes(projecoesData);
+        } else {
+            showAlert('danger', data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Erro ao consolidar projeções: ' + error);
+    });
+}
+
+// Alternar seleção de todas as projeções
+function toggleSelecionarTodas() {
+    const selecionarTodas = document.getElementById('selecionarTodas');
+    const checkboxes = document.querySelectorAll('.checkbox-projecao:not(:disabled)');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selecionarTodas.checked;
+    });
+}
+
+// Filtrar projeções quando o checkbox de filtro mudar
+document.getElementById('mostrarApenasNaoConsolidadas').addEventListener('change', function() {
+    renderizarProjecoes(projecoesData);
+});
+
+// Funções existentes
 function gerarPendentes(recorrenteId, meses=12) {
     if (confirm(`Gerar transações pendentes para esta recorrência pelos próximos ${meses} meses?`)) {
         fetch(`/api/transacao-recorrente/${recorrenteId}/gerar?meses=${meses}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showAlert('success', data.message);
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showAlert('danger', data.message);
-            }
-        })
-        .catch(error => {
-            showAlert('danger', 'Erro ao gerar transações: ' + error);
-        });
-    }
-}
-
-function gerarTodasPendentes(meses=12) {
-    if (confirm(`Gerar todas as transações pendentes de recorrências ativas pelos próximos ${meses} meses?`)) {
-        fetch(`/api/gerar-todas-transacoes-pendentes?meses=${meses}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {

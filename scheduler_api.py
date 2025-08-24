@@ -54,7 +54,8 @@ def run_jobs_now():
         # Processar cada recorrência
         for recorrente in recorrentes_ativas:
             try:
-                transacoes_geradas = recorrente.gerar_transacoes_pendentes()
+                # No caso do scheduler (que gera automaticamente), não projetamos as transações, criamos direto
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=False)
                 total_transacoes_geradas += len(transacoes_geradas)
             except Exception as e:
                 app.logger.error(f"Erro ao processar recorrência #{recorrente.id}: {str(e)}")
