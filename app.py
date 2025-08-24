@@ -1879,11 +1879,20 @@ def relatorios():
     from models import TransacaoRecorrente
     recorrentes_ativas = TransacaoRecorrente.query.filter_by(user_id=current_user.id, status=StatusRecorrencia.ATIVA).all()
     transacoes_projetadas = []
-    MESES_FUTUROS_RELATORIO = 24  # ou outro valor desejado
+    # Calcular quantos meses projetar: até dezembro do ano selecionado
+    agora = datetime.utcnow()
+    try:
+        ano_selecionado = int(ano)
+    except Exception:
+        ano_selecionado = agora.year
+
+    meses_futuros_relatorio = max(0, (ano_selecionado - agora.year) * 12 + (12 - agora.month))
+
     for recorrente in recorrentes_ativas:
         # Só gera se não tiver data_fim ou se data_fim for no futuro
-        if not recorrente.data_fim or recorrente.data_fim > datetime.utcnow():
-            projecoes = recorrente.gerar_transacoes_pendentes(meses_futuros=MESES_FUTUROS_RELATORIO, apenas_projetar=True)
+        if not recorrente.data_fim or recorrente.data_fim > agora:
+            # Gerar apenas o número de meses necessário para cobrir o ano filtrado
+            projecoes = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros_relatorio, apenas_projetar=True)
             for p in projecoes:
                 p.is_projetada = True
             transacoes_projetadas.extend(projecoes)
