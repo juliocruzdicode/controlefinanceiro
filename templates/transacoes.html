@@ -28,81 +28,8 @@
     </div>
 </div>
 
-<!-- Filtros -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h5 class="card-title">
-            <i class="fas fa-filter me-2"></i>Filtros
-        </h5>
-        <form method="GET" class="row g-3">
-            <div class="col-md-3">
-                <label for="categoria_id" class="form-label">Categoria</label>
-                <select class="form-select" name="categoria_id" id="categoria_id">
-                    <option value="">Todas as categorias</option>
-                    <!-- O select será preenchido via JavaScript -->
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="conta_id" class="form-label">Conta</label>
-                <select class="form-select" name="conta_id" id="conta_id">
-                    <option value="">Todas as contas</option>
-                    {% for conta in contas %}
-                    <option value="{{ conta.id }}" {{ 'selected' if filtros.conta_id == conta.id }}>
-                        {{ conta.nome }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label for="tipo" class="form-label">Tipo</label>
-                <select class="form-select" name="tipo" id="tipo">
-                    <option value="">Todos</option>
-                    <option value="receita" {{ 'selected' if filtros.tipo == 'receita' }}>Receita</option>
-                    <option value="despesa" {{ 'selected' if filtros.tipo == 'despesa' }}>Despesa</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label for="data_inicio" class="form-label">Data Início</label>
-                <input type="date" class="form-control" name="data_inicio" id="data_inicio" value="{{ filtros.data_inicio or '' }}">
-                {% if filtros.data_inicio %}
-                <div class="form-text small">{{ filtros.data_inicio|replace('-', '/') }}</div>
-                {% endif %}
-            </div>
-            <div class="col-md-2">
-                <label for="data_fim" class="form-label">Data Fim</label>
-                <input type="date" class="form-control" name="data_fim" id="data_fim" value="{{ filtros.data_fim or '' }}">
-                {% if filtros.data_fim %}
-                <div class="form-text small">{{ filtros.data_fim|replace('-', '/') }}</div>
-                {% endif %}
-            </div>
-            <div class="col-12">
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-1"></i>Filtrar
-                    </button>
-                    <a href="{{ url_for('transacoes', limpar_filtros=true) }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-times me-1"></i>Limpar
-                    </a>
-                </div>
-            </div>
-            <!-- Itens por página -->
-            <input type="hidden" name="per_page" value="{{ current_per_page }}">
-        </form>
-    </div>
-</div>
-
-<!-- Controle de Paginação Superior -->
-
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="h2">Transações</h1>
-        <p class="text-muted">Histórico completo de receitas e despesas</p>
-    </div>
-    <!-- Botões de navegação e ação agora junto dos filtros -->
-</div>
-        </select>
-    </div>
-</div>
+<!-- Navegação principal (apenas) - filtros removidos -->
+<!-- Mantemos o cabeçalho superior com navegação e botão de nova transação -->
 
 <div class="card">
     <div class="card-body">
@@ -426,67 +353,7 @@ function changePerPage(perPage) {
 
 // Quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado - Sistema de consolidação direta ativo');
-    
-    // Verificar se o formulário tem filtros de data aplicados
-    const dataInicio = document.getElementById('data_inicio');
-    const dataFim = document.getElementById('data_fim');
-    
-    // Se as datas estão preenchidas e não foram definidas pelo usuário,
-    // destacar que são filtros automáticos do mês
-    if (dataInicio && dataFim && dataInicio.value && dataFim.value) {
-        const dataInicioTxt = document.createElement('div');
-        dataInicioTxt.className = 'text-info small mt-1';
-        dataInicioTxt.textContent = 'Filtro mensal aplicado';
-        
-        // Inserir apenas se ainda não existe
-        if (!dataInicio.parentNode.querySelector('.text-info')) {
-            dataInicio.parentNode.appendChild(dataInicioTxt);
-        }
-    }
-    
-    // Carregar categorias
-    const selectCategoria = document.getElementById('categoria_id');
-    if (selectCategoria) {
-        try {
-            // Limpar o select para garantir que não haja duplicatas
-            selectCategoria.innerHTML = '<option value="">Todas as categorias</option>';
-            
-            // Verificar se a variável categorias está definida
-            if (typeof categorias !== 'undefined' && Array.isArray(categorias)) {
-                // Preencher o select com categorias em formato hierárquico
-                categorias.forEach(categoria => {
-                    adicionarCategoriaOption(selectCategoria, categoria, 0);
-                });
-                
-                // Selecionar a categoria filtrada, se houver
-                if (typeof filtroCategoria !== 'undefined' && filtroCategoria) {
-                    selectCategoria.value = filtroCategoria;
-                }
-            } else {
-                console.warn('Variável categorias não definida ou não é um array');
-            }
-        } catch (error) {
-            console.error('Erro ao configurar categorias:', error);
-        }
-    }
 });
-
-// Função recursiva para adicionar categorias com hierarquia visual
-function adicionarCategoriaOption(select, categoria, nivel) {
-    const indentacao = '  '.repeat(nivel) + (nivel > 0 ? '└─ ' : '');
-    const option = document.createElement('option');
-    option.value = categoria.id;
-    option.textContent = indentacao + categoria.nome;
-    select.appendChild(option);
-    
-    // Adicionar subcategorias recursivamente
-    if (categoria.subcategorias && categoria.subcategorias.length > 0) {
-        categoria.subcategorias.forEach(subcategoria => {
-            adicionarCategoriaOption(select, subcategoria, nivel + 1);
-        });
-    }
-}
 </script>
 
 <style>

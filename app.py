@@ -1027,40 +1027,17 @@ def transacoes():
                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
     mes_nome = meses_nomes[mes_atual - 1]
     
-    # Filtros opcionais
-    categoria_id = request.args.get('categoria_id', type=int)
-    conta_id = request.args.get('conta_id', type=int)
-    tipo = request.args.get('tipo')
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    limpar_filtros = request.args.get('limpar_filtros', False, type=bool)
-    
-    # Se não houver filtros de data, usar o mês atual/navegado
-    if not data_inicio and not data_fim and not limpar_filtros:
-        # Definir o primeiro dia do mês selecionado
-        primeiro_dia = date(ano_atual, mes_atual, 1)
-        # Definir o último dia do mês selecionado
-        if mes_atual == 12:
-            ultimo_dia = date(ano_atual + 1, 1, 1) - relativedelta(days=1)
-        else:
-            ultimo_dia = date(ano_atual, mes_atual + 1, 1) - relativedelta(days=1)
-        
-        # Formatar as datas para string no formato ISO
-        data_inicio = primeiro_dia.strftime('%Y-%m-%d')
-        data_fim = ultimo_dia.strftime('%Y-%m-%d')
-    
-    if categoria_id:
-        query = query.filter_by(categoria_id=categoria_id)
-    if conta_id:
-        query = query.filter_by(conta_id=conta_id)
-    if tipo:
-        query = query.filter_by(tipo=tipo)
-    if data_inicio:
-        data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
-        query = query.filter(Transacao.data_transacao >= data_inicio_dt)
-    if data_fim:
-        data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
-        query = query.filter(Transacao.data_transacao <= data_fim_dt)
+    # Sempre filtrar por mês/ano selecionado (navegação)
+    from datetime import datetime, date
+    primeiro_dia = date(ano_atual, mes_atual, 1)
+    if mes_atual == 12:
+        ultimo_dia = date(ano_atual + 1, 1, 1) - relativedelta(days=1)
+    else:
+        ultimo_dia = date(ano_atual, mes_atual + 1, 1) - relativedelta(days=1)
+
+    # Aplicar filtro de período do mês visualizado
+    query = query.filter(Transacao.data_transacao >= datetime.combine(primeiro_dia, datetime.min.time()))
+    query = query.filter(Transacao.data_transacao <= datetime.combine(ultimo_dia, datetime.max.time()))
     
     # Paginação
     query_final = query.order_by(Transacao.data_transacao.desc())
@@ -1156,13 +1133,9 @@ def transacoes():
     
     # Definir data limite com base no mês visualizado
     # SEMPRE considerar o mês visualizado como referência, não filtros
-    data_visualizada = None
-    if data_inicio:
-        data_visualizada = datetime.strptime(data_inicio, '%Y-%m-%d')
-        print(f"Data de início do filtro: {data_visualizada}")
-    else:
-        data_visualizada = datetime.utcnow()
-        print(f"Usando data atual: {data_visualizada}")
+    # Usar o mês visualizado como referência para decisões de geração
+    data_visualizada = datetime.combine(primeiro_dia, datetime.min.time())
+    print(f"Usando mês visualizado como referência: {data_visualizada}")
     
     # Calcular quantos meses no futuro estamos visualizando
     hoje = datetime.utcnow()
@@ -1252,23 +1225,11 @@ def transacoes():
     
     # Se foram geradas novas transações, refazer a consulta e a paginação
     if transacoes_recorrentes_geradas > 0:
-        # Reconstruir a consulta completa
+        # Reconstruir a consulta completa — apenas pelo mês visualizado para manter comportamento
         query = Transacao.query.filter_by(user_id=current_user.id)
-        
-        # Reaplicar todos os filtros
-        if categoria_id:
-            query = query.filter_by(categoria_id=categoria_id)
-        if conta_id:
-            query = query.filter_by(conta_id=conta_id)
-        if tipo:
-            query = query.filter_by(tipo=tipo)
-        if data_inicio:
-            data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
-            query = query.filter(Transacao.data_transacao >= data_inicio_dt)
-        if data_fim:
-            data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
-            query = query.filter(Transacao.data_transacao <= data_fim_dt)
-        
+        query = query.filter(Transacao.data_transacao >= datetime.combine(primeiro_dia, datetime.min.time()))
+        query = query.filter(Transacao.data_transacao <= datetime.combine(ultimo_dia, datetime.max.time()))
+
         # Refazer a paginação
         transacoes_pagination = query.order_by(Transacao.data_transacao.desc()).paginate(
             page=page,
@@ -1283,52 +1244,20 @@ def transacoes():
         
         # flash(f'Foram geradas automaticamente {transacoes_recorrentes_geradas} transações recorrentes ({recorrentes_texto}) para visualização futura.', 'info')
     
-    # Buscar dados para filtros
-    # Buscar apenas categorias principais (sem pai) para o usuário atual
-    categorias_principais = Categoria.query.filter_by(
-        user_id=current_user.id, 
-        parent_id=None
-    ).order_by(Categoria.nome).all()
-    
-    # Função para estruturar categorias hierarquicamente com subcategorias
-    def add_subcategorias(categoria):
-        categoria_dict = categoria.__dict__.copy()
-        if '_sa_instance_state' in categoria_dict:
-            del categoria_dict['_sa_instance_state']
-        
-        subcategorias = Categoria.query.filter_by(
-            user_id=current_user.id,
-            parent_id=categoria.id
-        ).order_by(Categoria.nome).all()
-        
-        categoria_dict['subcategorias'] = [add_subcategorias(subcat) for subcat in subcategorias]
-        return categoria_dict
-    
-    # Criar estrutura hierárquica
-    categorias = [add_subcategorias(cat) for cat in categorias_principais]
-    contas = Conta.query.filter_by(user_id=current_user.id, ativa=True).order_by(Conta.nome).all()
-    
-    # Opções de itens por página
+    # Opções de itens por página (mantidas)
     per_page_options = [10, 20, 50, 100]
     per_page_options = [opt for opt in per_page_options if opt <= app.config['TRANSACOES_PER_PAGE_MAX']]
-    
+
+    # Renderizar sem filtros (filtros vazios para compatibilidade com paginação)
     return render_template('transacoes.html', 
                          transacoes=transacoes_combinadas,
                          pagination=transacoes_pagination,
-                         categorias=categorias,
-                         contas=contas,
                          per_page_options=per_page_options,
                          current_per_page=per_page,
                          ano_atual=ano_atual,
                          mes_atual=mes_atual,
                          mes_nome=mes_nome,
-                         filtros={
-                             'categoria_id': categoria_id,
-                             'conta_id': conta_id,
-                             'tipo': tipo,
-                             'data_inicio': data_inicio,
-                             'data_fim': data_fim
-                         })
+                         filtros={})
                          
 @app.route('/confirmar-transacao/<int:recorrencia_id>/<data_transacao>')
 @login_required
@@ -1801,11 +1730,26 @@ def relatorios():
     tipo = request.form.get('tipo', 'todos')
     categoria_id = request.form.get('categoria')
     conta_id = request.form.get('conta')
+    # Filtro por intervalo de datas (opcional)
+    data_inicio_str = request.form.get('data_inicio')
+    data_fim_str = request.form.get('data_fim')
     
     try:
         ano = int(ano)
     except (ValueError, TypeError):
         ano = ano_atual
+
+    # Parse de data_inicio/data_fim se fornecidos (espera formato YYYY-MM-DD)
+    start_dt = None
+    end_dt = None
+    try:
+        if data_inicio_str:
+            start_dt = datetime.strptime(data_inicio_str, '%Y-%m-%d')
+        if data_fim_str:
+            end_dt = datetime.strptime(data_fim_str, '%Y-%m-%d')
+    except Exception:
+        start_dt = None
+        end_dt = None
     
     # Obter anos disponíveis - FILTRAR POR USUÁRIO
     # Anos disponíveis: incluir anos futuros até 5 anos à frente
@@ -1832,8 +1776,7 @@ def relatorios():
     
     # Construir query base - FILTRAR POR USUÁRIO
     query = db.session.query(Transacao).filter(
-        extract('year', Transacao.data_transacao) == ano,
-        Transacao.user_id == current_user.id  # ← ADICIONAR FILTRO
+        Transacao.user_id == current_user.id
     )
     
     # ...resto do código permanece igual...
@@ -1873,20 +1816,35 @@ def relatorios():
             conta_id = None
     
     # Obter transações reais
+    # Aplicar filtro de data (intervalo ou ano)
+    if start_dt and end_dt:
+        # usar intervalo fornecido
+        query = query.filter(Transacao.data_transacao >= start_dt, Transacao.data_transacao <= end_dt)
+        periodo_inicio = start_dt
+        periodo_fim = end_dt
+    else:
+        # usar ano selecionado
+        periodo_inicio = datetime(ano, 1, 1)
+        periodo_fim = datetime(ano, 12, 31, 23, 59, 59)
+        query = query.filter(Transacao.data_transacao >= periodo_inicio, Transacao.data_transacao <= periodo_fim)
+
     transacoes = query.all()
 
     # Gerar projeções futuras para recorrências ativas do usuário
     from models import TransacaoRecorrente
     recorrentes_ativas = TransacaoRecorrente.query.filter_by(user_id=current_user.id, status=StatusRecorrencia.ATIVA).all()
     transacoes_projetadas = []
-    # Calcular quantos meses projetar: até dezembro do ano selecionado
+    # Calcular quantos meses projetar: até o fim do período filtrado
     agora = datetime.utcnow()
     try:
-        ano_selecionado = int(ano)
-    except Exception:
-        ano_selecionado = agora.year
+        fim_periodo = periodo_fim
+    except NameError:
+        fim_periodo = datetime(ano, 12, 31, 23, 59, 59)
 
-    meses_futuros_relatorio = max(0, (ano_selecionado - agora.year) * 12 + (12 - agora.month))
+    # meses entre agora (mes atual) e fim_periodo (incluir meses)
+    meses_futuros_relatorio = 0
+    if fim_periodo > agora:
+        meses_futuros_relatorio = (fim_periodo.year - agora.year) * 12 + (fim_periodo.month - agora.month)
 
     for recorrente in recorrentes_ativas:
         # Só gera se não tiver data_fim ou se data_fim for no futuro
@@ -1927,19 +1885,29 @@ def relatorios():
         ano = datetime.now().year
     transacoes = [t for t in transacoes if t.data_transacao.year == ano]
     
-    # Gerar meses do ano
-    meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 
-             'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    # Gerar lista de meses baseada no período (rótulos em PT)
+    meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+    meses = []
+    month_starts = []
+    cur = periodo_inicio.replace(day=1)
+    while cur <= periodo_fim:
+        month_starts.append(cur)
+        meses.append(f"{meses_pt[cur.month-1]} {cur.year}")
+        # avançar um mês
+        if cur.month == 12:
+            cur = cur.replace(year=cur.year+1, month=1)
+        else:
+            cur = cur.replace(month=cur.month+1)
     
     # Calcular totais mensais sem duplicidade por recorrencia/categoria/tipo
     totais_mensais = {}
-    for i, mes in enumerate(meses, 1):
+    for idx, month_start in enumerate(month_starts):
         # Agrupar por (categoria_id, tipo, recorrencia_id) para evitar duplicidade
         vistos = set()
         receita = 0
         despesa = 0
         for t in transacoes:
-            if t.data_transacao.month != i:
+            if t.data_transacao.year != month_start.year or t.data_transacao.month != month_start.month:
                 continue
             if t.recorrencia_id:
                 chave = (t.data_transacao.year, t.data_transacao.month, t.recorrencia_id)
@@ -1952,7 +1920,7 @@ def relatorios():
                 receita += t.valor
             elif t.tipo == TipoTransacao.DESPESA:
                 despesa += t.valor
-        totais_mensais[mes] = {'receita': receita, 'despesa': despesa}
+        totais_mensais[meses[idx]] = {'receita': receita, 'despesa': despesa}
 
     # Calcular totais gerais
     vistos = set()
@@ -2025,11 +1993,11 @@ def relatorios():
     matriz_dados = {}
     for categoria in categorias_receitas + categorias_despesas:
         matriz_dados[categoria.id] = {}
-        for i, mes in enumerate(meses, 1):
+        for idx, month_start in enumerate(month_starts):
             vistos = set()
             valor_mes = 0
             for t in transacoes:
-                if t.categoria_id != categoria.id or t.data_transacao.month != i:
+                if t.categoria_id != categoria.id or t.data_transacao.year != month_start.year or t.data_transacao.month != month_start.month:
                     continue
                 if t.recorrencia_id:
                     chave = (t.data_transacao.year, t.data_transacao.month, t.recorrencia_id)
@@ -2039,7 +2007,7 @@ def relatorios():
                     continue
                 vistos.add(chave)
                 valor_mes += t.valor
-            matriz_dados[categoria.id][mes] = valor_mes if valor_mes > 0 else 0
+            matriz_dados[categoria.id][meses[idx]] = valor_mes if valor_mes > 0 else 0
     
     # Debug: imprimir totais_mensais e matriz_dados para inspeção
     try:
@@ -2734,100 +2702,82 @@ def projetar_transacoes_futuras():
 def consolidar_projecoes():
     """Consolida projeções selecionadas, salvando-as no banco de dados"""
     try:
-        data = request.json
+        data = request.json or {}
         projecoes_ids = data.get('projecoes_ids', [])
-        
+
         app.logger.info(f"Solicitação para consolidar projeções: {projecoes_ids}")
-        
+
         if not projecoes_ids:
-            app.logger.warning("Nenhuma projeção selecionada para consolidação")
             return jsonify({'success': False, 'message': 'Nenhuma projeção selecionada'}), 400
-        
+
         # Filtrar apenas IDs negativos (projeções não consolidadas)
         projecoes_ids = [int(pid) for pid in projecoes_ids if int(pid) < 0]
-        
         if not projecoes_ids:
-            app.logger.warning("Todas as projeções selecionadas já estão consolidadas")
             return jsonify({'success': False, 'message': 'Todas as projeções selecionadas já estão consolidadas'}), 400
-        
-        app.logger.info(f"Projeções válidas para consolidação: {projecoes_ids}")
-        
-        # Lista para armazenar IDs de projeções consolidadas com sucesso
+
         consolidadas = []
-        
-        # Para cada ID de projeção, gerar uma nova solicitação para obter os dados atualizados
-        # e criar a transação correspondente
+        erros = []
+
         for projecao_id in projecoes_ids:
-            # Aqui precisamos dos dados completos da projeção
-            # Como IDs negativos são temporários, precisamos de dados adicionais
-            recorrencia_id = data.get(f'recorrencia_{abs(projecao_id)}')
-            data_projecao = data.get(f'data_{abs(projecao_id)}')
-            
-            # Se não temos os dados completos, vamos tentar a próxima abordagem
+            key_rec = f'recorrencia_{abs(projecao_id)}'
+            key_data = f'data_{abs(projecao_id)}'
+            recorrencia_id = data.get(key_rec)
+            data_projecao = data.get(key_data)
+
             if not recorrencia_id or not data_projecao:
-                # Tentar buscar da lista completa de projeções
-                projecoes_data = data.get('projecoes_data', [])
-                projecao = next((p for p in projecoes_data if p.get('id') == projecao_id), None)
-                
-                try:
-                    # Parâmetro para número de meses
-                    meses_futuros = request.args.get('meses', 600, type=int)
-                    # Validar meses_futuros (mínimo 1)
-                    if meses_futuros < 1:
-                        meses_futuros = 1
-                    recorrente = TransacaoRecorrente.query.filter_by(id=recorrente_id, user_id=current_user.id).first_or_404()
-                    # Se tem data_fim, usar isso como limite
-                    if recorrente.data_fim:
-                        # Gerar transações passadas e projetar futuras
-                        transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=True)
-                        transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
-                        projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
-                        mensagem = f'{len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}'
-                    else:
-                        # Gerar transações para os próximos meses
-                        transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros, apenas_projetar=True)
-                        transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
-                        projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
-                        mensagem = f'{len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) para os próximos {meses_futuros} meses'
-                    return jsonify({
-                        'success': True,
-                        'message': mensagem,
-                        'transacoes_geradas': len(transacoes_geradas),
-                        'meses_futuros': meses_futuros,
-                        'tem_data_fim': recorrente.data_fim is not None,
-                        'data_fim': recorrente.data_fim.strftime('%d/%m/%Y') if recorrente.data_fim else None
-                    })
-                except Exception as e:
-                    return jsonify({'success': False, 'message': str(e)}), 500
-                valor=recorrente.valor,
-                tipo=recorrente.tipo,
-                data_transacao=data_dt,
-                categoria_id=recorrente.categoria_id,
-                conta_id=recorrente.conta_id,
-                recorrencia_id=recorrente.id,
-                user_id=current_user.id
-            
-            
-            db.session.add(nova_transacao)
-            consolidadas.append(projecao_id)
-            app.logger.info(f"Projeção ID {projecao_id} consolidada com sucesso para data {data_projecao}")
-            
-            # Atualizar contador de parcelas se for parcelada
-            if recorrente.is_parcelada:
-                recorrente.parcelas_geradas += 1
-                app.logger.info(f"Atualizado contador de parcelas: {recorrente.parcelas_geradas}/{recorrente.total_parcelas}")
-                if recorrente.parcelas_geradas >= recorrente.total_parcelas:
-                    recorrente.status = StatusRecorrencia.FINALIZADA
-                    app.logger.info(f"Recorrência parcelada ID {recorrente.id} finalizada")
-        
-        db.session.commit()
-        app.logger.info(f"Consolidação concluída: {len(consolidadas)} projeções consolidadas")
-        
-        return jsonify({
-            'success': True,
-            'message': f'{len(consolidadas)} projeção(ões) consolidada(s) com sucesso',
-            'consolidadas': consolidadas
-        })
+                erros.append(f'Dados incompletos para projeção {projecao_id}')
+                continue
+
+            try:
+                recorrente = TransacaoRecorrente.query.filter_by(id=int(recorrencia_id), user_id=current_user.id).first()
+                if not recorrente:
+                    erros.append(f'Recorrência {recorrencia_id} não encontrada')
+                    continue
+
+                data_dt = datetime.strptime(data_projecao, '%Y-%m-%d')
+
+                # Verificar se já existe transação para essa data
+                existente = Transacao.query.filter_by(recorrencia_id=recorrente.id, data_transacao=data_dt).first()
+                if existente:
+                    erros.append(f'Transação para {data_projecao} já existe')
+                    continue
+
+                nova_transacao = Transacao(
+                    descricao=recorrente.descricao,
+                    valor=recorrente.valor,
+                    tipo=recorrente.tipo,
+                    data_transacao=data_dt,
+                    categoria_id=recorrente.categoria_id,
+                    conta_id=recorrente.conta_id,
+                    recorrencia_id=recorrente.id,
+                    user_id=current_user.id
+                )
+
+                db.session.add(nova_transacao)
+
+                if recorrente.is_parcelada:
+                    recorrente.parcelas_geradas += 1
+                    if recorrente.parcelas_geradas >= recorrente.total_parcelas:
+                        recorrente.status = StatusRecorrencia.FINALIZADA
+
+                consolidadas.append(projecao_id)
+                app.logger.info(f"Projeção ID {projecao_id} consolidada para {data_projecao}")
+
+            except Exception as e:
+                erros.append(f'Erro ao processar projeção {projecao_id}: {str(e)}')
+
+        if consolidadas:
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'success': False, 'message': f'Erro ao salvar transações: {str(e)}'}), 500
+
+        if not consolidadas:
+            return jsonify({'success': False, 'message': f'Nenhuma projeção consolidada. Erros: {"; ".join(erros)}'}), 400
+
+        return jsonify({'success': True, 'message': f'{len(consolidadas)} projeção(ões) consolidada(s) com sucesso', 'consolidadas': consolidadas})
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
