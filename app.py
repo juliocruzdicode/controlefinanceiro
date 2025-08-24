@@ -2891,34 +2891,24 @@ def criar_tabelas():
             db.session.commit()
             print("✅ Categorias hierárquicas criadas com sucesso!")
 
-@app.route('/admin/limpar-transacoes', methods=['POST'])
-@login_required  # ← ADICIONAR ESTA LINHA
+@app.route('/admin/limpar-todas-transacoes', methods=['POST'])
+@login_required
 def limpar_todas_transacoes():
-    """Rota administrativa para limpar todas as transações - APENAS ADMIN"""
-    # VERIFICAR SE É ADMIN
     if not current_user.is_admin:
-        flash('Acesso negado. Apenas administradores podem executar esta ação.', 'danger')
-        return redirect(url_for('dashboard'))
-    
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('admin'))
+
     try:
-        # Contar transações antes
-        total_transacoes = Transacao.query.count()
-        total_recorrentes = TransacaoRecorrente.query.count()
-        
-        # Deletar transações recorrentes primeiro
-        TransacaoRecorrente.query.delete()
-        
-        # Deletar todas as transações
+        # Primeiro apaga todas as transações
         Transacao.query.delete()
-        
         db.session.commit()
-        
-        flash(f'✅ {total_transacoes} transações e {total_recorrentes} recorrentes foram removidas!', 'success')
-        
+        # Depois apaga todas as recorrências
+        TransacaoRecorrente.query.delete()
+        db.session.commit()
+        flash('Todas as transações e recorrências foram removidas com sucesso!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'❌ Erro ao limpar transações: {str(e)}', 'danger')
-    
+        flash(f'❌ Erro ao limpar transações: {e}', 'danger')
     return redirect(url_for('admin'))
 
 @app.route('/admin')
