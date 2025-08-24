@@ -2901,7 +2901,8 @@ def limpar_todas_transacoes():
 
     try:
         # Primeiro apaga todas as associações de tags
-        db.session.execute('DELETE FROM transacao_tags')
+        from sqlalchemy import text
+        db.session.execute(text('DELETE FROM transacao_tags'))
         db.session.commit()
         # Depois apaga todas as transações
         Transacao.query.delete()
