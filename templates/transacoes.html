@@ -338,6 +338,44 @@ function changePerPage(perPage) {
     url.searchParams.set('page', 1); // Voltar para a primeira página ao mudar a quantidade
     window.location.href = url.toString();
 }
+
+// Dados de categorias recebidos do backend
+const categorias = {{ categorias|tojson }};
+const filtroCategoria = {{ filtros.categoria_id|default("null")|tojson }};
+
+// Quando o documento estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    const selectCategoria = document.getElementById('categoria_id');
+    
+    // Limpar o select para garantir que não haja duplicatas
+    selectCategoria.innerHTML = '<option value="">Todas as categorias</option>';
+    
+    // Preencher o select com categorias em formato hierárquico
+    categorias.forEach(categoria => {
+        adicionarCategoriaOption(selectCategoria, categoria, 0);
+    });
+    
+    // Selecionar a categoria filtrada, se houver
+    if (filtroCategoria) {
+        selectCategoria.value = filtroCategoria;
+    }
+});
+
+// Função recursiva para adicionar categorias com hierarquia visual
+function adicionarCategoriaOption(select, categoria, nivel) {
+    const indentacao = '  '.repeat(nivel) + (nivel > 0 ? '└─ ' : '');
+    const option = document.createElement('option');
+    option.value = categoria.id;
+    option.textContent = indentacao + categoria.nome;
+    select.appendChild(option);
+    
+    // Adicionar subcategorias recursivamente
+    if (categoria.subcategorias && categoria.subcategorias.length > 0) {
+        categoria.subcategorias.forEach(subcategoria => {
+            adicionarCategoriaOption(select, subcategoria, nivel + 1);
+        });
+    }
+}
 </script>
 
 <style>
@@ -367,47 +405,4 @@ function changePerPage(perPage) {
     max-width: 180px;
 }
 </style>
-{% endblock %}
-
-{% block scripts %}
-{{ super() }}
-<script>
-    // Dados de categorias recebidos do backend
-    const categorias = {{ categorias|tojson }};
-    const filtroCategoria = {{ filtros.categoria_id|default("null")|tojson }};
-    
-    // Quando o documento estiver pronto
-    document.addEventListener('DOMContentLoaded', function() {
-        const selectCategoria = document.getElementById('categoria_id');
-        
-        // Limpar o select para garantir que não haja duplicatas
-        selectCategoria.innerHTML = '<option value="">Todas as categorias</option>';
-        
-        // Preencher o select com categorias em formato hierárquico
-        categorias.forEach(categoria => {
-            adicionarCategoriaOption(selectCategoria, categoria, 0);
-        });
-        
-        // Selecionar a categoria filtrada, se houver
-        if (filtroCategoria) {
-            selectCategoria.value = filtroCategoria;
-        }
-    });
-    
-    // Função recursiva para adicionar categorias com hierarquia visual
-    function adicionarCategoriaOption(select, categoria, nivel) {
-        const indentacao = '  '.repeat(nivel) + (nivel > 0 ? '└─ ' : '');
-        const option = document.createElement('option');
-        option.value = categoria.id;
-        option.textContent = indentacao + categoria.nome;
-        select.appendChild(option);
-        
-        // Adicionar subcategorias recursivamente
-        if (categoria.subcategorias && categoria.subcategorias.length > 0) {
-            categoria.subcategorias.forEach(subcategoria => {
-                adicionarCategoriaOption(select, subcategoria, nivel + 1);
-            });
-        }
-    }
-</script>
 {% endblock %}

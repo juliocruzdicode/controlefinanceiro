@@ -370,7 +370,8 @@ class TransacaoRecorrente(db.Model):
             data_transacao=proxima_data,
             categoria_id=self.categoria_id,
             conta_id=self.conta_id,
-            recorrencia_id=self.id
+            recorrencia_id=self.id,
+            user_id=self.user_id  # Adicionando o user_id
         )
         
         db.session.add(nova_transacao)

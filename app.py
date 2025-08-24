@@ -1028,7 +1028,7 @@ def transacoes():
     # Buscar apenas categorias principais (sem pai) para o usuário atual
     categorias_principais = Categoria.query.filter_by(
         user_id=current_user.id, 
-        categoria_pai_id=None
+        parent_id=None
     ).order_by(Categoria.nome).all()
     
     # Função para estruturar categorias hierarquicamente com subcategorias
@@ -1039,7 +1039,7 @@ def transacoes():
         
         subcategorias = Categoria.query.filter_by(
             user_id=current_user.id,
-            categoria_pai_id=categoria.id
+            parent_id=categoria.id
         ).order_by(Categoria.nome).all()
         
         categoria_dict['subcategorias'] = [add_subcategorias(subcat) for subcat in subcategorias]

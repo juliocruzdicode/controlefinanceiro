@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% block title %}Transações Recorrentes - Agendador{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">
+        <i class="fas fa-sync-alt me-2"></i> Agendador de Transações Recorrentes
+    </h1>
+    
+    <div class="alert alert-info">
+        <h4 class="alert-heading"><i class="fas fa-info-circle"></i> Sobre o Agendador</h4>
+        <p>O sistema gera automaticamente transações recorrentes todos os dias à meia-noite.</p>
+        <p>Você também pode gerar manualmente todas as suas transações recorrentes pendentes clicando no botão abaixo.</p>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-check"></i> Status do Agendador</h5>
+                </div>
+                <div class="card-body">
+                    <div id="scheduler-status">
+                        <p><strong>Status:</strong> <span id="status-text">Carregando...</span></p>
+                        <div id="jobs-container">
+                            <p><strong>Próximas execuções:</strong></p>
+                            <ul id="jobs-list" class="list-group">
+                                <li class="list-group-item">Carregando informações...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Ações</h5>
+                </div>
+                <div class="card-body">
+                    <p>Clique no botão abaixo para gerar imediatamente todas as transações recorrentes pendentes.</p>
+                    <button id="run-now-button" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Gerar Transações Agora
+                    </button>
+                    
+                    <div id="run-result" class="mt-3" style="display: none;">
+                        <!-- Aqui serão exibidos os resultados -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-list-alt"></i> Suas Transações Recorrentes</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{{ url_for('transacoes_recorrentes') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-list"></i> Ver Todas as Transações Recorrentes
+                    </a>
+                    <a href="{{ url_for('nova_transacao_recorrente') }}" class="btn btn-outline-success">
+                        <i class="fas fa-plus"></i> Criar Nova Transação Recorrente
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Função para carregar o status do agendador
+    function loadSchedulerStatus() {
+        fetch('/api/scheduler/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('status-text').textContent = 'Erro: ' + data.error;
+                    return;
+                }
+                
+                document.getElementById('status-text').textContent = 
+                    data.status === 'running' ? 'Ativo' : 'Parado';
+                
+                const jobsList = document.getElementById('jobs-list');
+                jobsList.innerHTML = '';
+                
+                if (data.jobs && data.jobs.length > 0) {
+                    data.jobs.forEach(job => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+                        li.innerHTML = `<strong>${job.id}</strong>: Próxima execução em <span class="badge bg-info">${job.next_run_time || 'Não agendado'}</span>`;
+                        jobsList.appendChild(li);
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.textContent = 'Nenhum job agendado.';
+                    jobsList.appendChild(li);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar status:', error);
+                document.getElementById('status-text').textContent = 'Erro ao carregar status';
+            });
+    }
+    
+    // Carregar status inicialmente
+    loadSchedulerStatus();
+    
+    // Configurar botão para gerar transações
+    document.getElementById('run-now-button').addEventListener('click', function() {
+        const button = this;
+        const resultDiv = document.getElementById('run-result');
+        
+        // Desabilitar botão e mostrar loading
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+        resultDiv.style.display = 'none';
+        
+        fetch('/api/scheduler/run-now')
+            .then(response => response.json())
+            .then(data => {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-sync"></i> Gerar Transações Agora';
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h5><i class="fas fa-check-circle"></i> Processamento concluído!</h5>
+                            <p>${data.message}</p>
+                            <ul>
+                                <li>Recorrências processadas: ${data.recorrentes_processadas}</li>
+                                <li>Novas transações geradas: ${data.transacoes_geradas}</li>
+                            </ul>
+                        </div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5><i class="fas fa-exclamation-triangle"></i> Erro!</h5>
+                            <p>${data.message || 'Ocorreu um erro ao processar as transações recorrentes.'}</p>
+                        </div>`;
+                }
+                
+                // Recarregar status do agendador
+                loadSchedulerStatus();
+            })
+            .catch(error => {
+                console.error('Erro ao executar jobs:', error);
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-sync"></i> Gerar Transações Agora';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Erro!</h5>
+                        <p>Ocorreu um erro ao processar as transações recorrentes.</p>
+                    </div>`;
+            });
+    });
+});
+</script>
+{% endblock %}
