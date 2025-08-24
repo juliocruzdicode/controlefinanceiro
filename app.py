@@ -1091,12 +1091,12 @@ def transacoes():
     
     # Definir horizonte de geração baseado na navegação
     # SEMPRE gerar pelo menos X meses além do mês visualizado
-    meses_alem_visualizacao = 6  # Buffer de visualização futura
+    meses_alem_visualizacao = 24  # Buffer de visualização futura aumentado para 24
     
     # Calcular quantos meses no total gerar a partir de hoje
     if diferenca_meses <= 0:
-        # Para meses atuais ou passados, gerar pelo menos 12 meses à frente
-        meses_para_gerar = 12
+        # Para meses atuais ou passados, gerar pelo menos 36 meses à frente
+        meses_para_gerar = 36
     else:
         # Para meses futuros, gerar até a data visualizada + buffer
         meses_para_gerar = diferenca_meses + meses_alem_visualizacao
@@ -1201,7 +1201,7 @@ def transacoes():
         if len(recorrentes_atualizadas) > 3:
             recorrentes_texto += f" e mais {len(recorrentes_atualizadas) - 3}"
         
-        flash(f'Foram geradas automaticamente {transacoes_recorrentes_geradas} transações recorrentes ({recorrentes_texto}) para visualização futura.', 'info')
+        # flash(f'Foram geradas automaticamente {transacoes_recorrentes_geradas} transações recorrentes ({recorrentes_texto}) para visualização futura.', 'info')
     
     # Buscar dados para filtros
     # Buscar apenas categorias principais (sem pai) para o usuário atual
@@ -2112,13 +2112,13 @@ def gerar_transacoes_pendentes(recorrente_id):
     """Gera manualmente as transações pendentes de uma recorrência"""
     try:
         # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 12, type=int)
+        meses_futuros = request.args.get('meses', 24, type=int)
         
-        # Validar meses_futuros (mínimo 1, máximo 36)
+        # Validar meses_futuros (mínimo 1, máximo 60)
         if meses_futuros < 1:
             meses_futuros = 1
-        elif meses_futuros > 36:
-            meses_futuros = 36
+        elif meses_futuros > 60:
+            meses_futuros = 60
         
         recorrente = TransacaoRecorrente.query.filter_by(id=recorrente_id, user_id=current_user.id).first_or_404()
         
@@ -2194,13 +2194,13 @@ def gerar_todas_transacoes_pendentes():
     """Gera todas as transações pendentes de todas as recorrências ativas"""
     try:
         # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 12, type=int)
+        meses_futuros = request.args.get('meses', 24, type=int)
         
-        # Validar meses_futuros (mínimo 1, máximo 36)
+        # Validar meses_futuros (mínimo 1, máximo 60)
         if meses_futuros < 1:
             meses_futuros = 1
-        elif meses_futuros > 36:
-            meses_futuros = 36
+        elif meses_futuros > 60:
+            meses_futuros = 60
         
         recorrentes_ativas = TransacaoRecorrente.query.filter_by(
             status=StatusRecorrencia.ATIVA, 

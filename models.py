@@ -384,13 +384,13 @@ class TransacaoRecorrente(db.Model):
         db.session.commit()
         return nova_transacao
     
-    def gerar_transacoes_pendentes(self, meses_futuros=12):
+    def gerar_transacoes_pendentes(self, meses_futuros=24):
         """
         Gera todas as transações pendentes até a data_fim, se definida,
         ou até o número de meses futuros especificado.
         
         Args:
-            meses_futuros (int): Quantos meses para frente gerar (padrão: 12)
+            meses_futuros (int): Quantos meses para frente gerar (padrão: 24)
             
         Returns:
             Lista de transações geradas
@@ -402,6 +402,11 @@ class TransacaoRecorrente(db.Model):
         if self.status == StatusRecorrencia.FINALIZADA or \
            (self.is_parcelada and self.parcelas_geradas >= self.total_parcelas):
             print(f"Recorrência {self.id} já finalizada - Status: {self.status.value}, Parcelas: {self.parcelas_geradas}/{self.total_parcelas if self.total_parcelas else 'Indefinido'}")
+            return transacoes_geradas
+            
+        # Verificar explicitamente o status
+        if self.status != StatusRecorrencia.ATIVA:
+            print(f"AVISO: Recorrência {self.id} não está ativa. Status atual: {self.status.value}")
             return transacoes_geradas
         
         # Definir data limite de geração - SEMPRE usar a data atual + meses_futuros
