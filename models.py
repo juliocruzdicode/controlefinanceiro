@@ -490,18 +490,25 @@ class TransacaoRecorrente(db.Model):
                 proxima_data = self.calcular_proxima_data(proxima_data)
                 continue
                 
-            # Determinar se deve persistir ou apenas projetar
-            is_futuro = data_transacao_date > final_mes_atual
-            
-            # Projetar transações futuras OU se o parâmetro apenas_projetar estiver ativado
-            if is_futuro or apenas_projetar:
-                # Criar transação virtual (não salvar no banco)
-                print(f"Criando PROJEÇÃO para data {proxima_data} (não será salva no banco)")
-                
+            # Determinar se deve persistir (real) ou apenas projetar
+            is_projecao = data_transacao_date > final_mes_atual or apenas_projetar
+
+            if is_projecao:
                 # Criar transação virtual (não salva no banco)
+                print(f"Criando PROJEÇÃO para data {proxima_data} (não será salva no banco)")
+                numero_parcela = None
+                if self.is_parcelada:
+                    total_existentes = len([
+                        t for t in self.transacoes
+                        if t.recorrencia_id == self.id and t.data_transacao < proxima_data
+                    ])
+                    numero_parcela = total_existentes + 1
+                descricao_proj = self.descricao
+                if self.is_parcelada and numero_parcela is not None:
+                    descricao_proj += f" - Parcela {numero_parcela}/{self.total_parcelas}"
                 projecao = Transacao(
-                    id=-(100000 + self.id*1000 + iteracoes),  # ID negativo para identificar como projeção
-                    descricao=self.descricao,
+                    id=-(100000 + self.id*1000 + iteracoes),
+                    descricao=descricao_proj,
                     valor=self.valor,
                     tipo=self.tipo,
                     data_transacao=proxima_data,
@@ -510,21 +517,15 @@ class TransacaoRecorrente(db.Model):
                     recorrencia_id=self.id,
                     user_id=self.user_id
                 )
-                
-                # Marcar como projeção
                 projecao.is_projetada = True
-                
-                # Adicionar categoria e conta para exibição
                 projecao.categoria = self.categoria
                 projecao.conta = self.conta
-                
                 print(f"Nova projeção criada: {projecao.descricao} - {projecao.data_transacao}")
                 transacoes_geradas.append(projecao)
             else:
-                # Gerar transação normal e salvar no banco (apenas mês atual e passado)
+                # Gerar transação real (persistida) para mês atual ou anterior
                 print(f"Gerando transação real para data {proxima_data}")
                 nova_transacao = self.gerar_proxima_transacao()
-                
                 if nova_transacao:
                     print(f"Nova transação gerada: {nova_transacao.descricao} - {nova_transacao.data_transacao}")
                     transacoes_geradas.append(nova_transacao)

@@ -1427,9 +1427,18 @@ def confirmar_transacao():
         flash('Esta transação já foi confirmada anteriormente', 'warning')
         return redirect(redirect_url)
     
-    # Criar nova transação real
+    # Calcular número da parcela igual à lógica da projeção
+    descricao_final = recorrencia.descricao
+    if recorrencia.is_parcelada:
+        # Conta quantas transações (reais) já existem para esta recorrência antes desta data
+        total_existentes = len([
+            t for t in recorrencia.transacoes
+            if t.recorrencia_id == recorrencia_id and t.data_transacao < data
+        ])
+        numero_parcela = total_existentes + 1
+        descricao_final += f" - Parcela {numero_parcela}/{recorrencia.total_parcelas}"
     nova_transacao = Transacao(
-        descricao=recorrencia.descricao,
+        descricao=descricao_final,
         valor=recorrencia.valor,
         tipo=recorrencia.tipo,
         data_transacao=data,
