@@ -8,9 +8,23 @@
         <h1 class="h2">Transações</h1>
         <p class="text-muted">Histórico completo de receitas e despesas</p>
     </div>
-    <a href="{{ url_for('nova_transacao') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>Nova Transação
-    </a>
+    <div class="d-flex align-items-center gap-2">
+        <!-- Botões de Navegação por Mês -->
+        <div class="btn-group me-3" role="group" aria-label="Navegação por mês">
+            <a href="{{ url_for('transacoes', mes='anterior', ano=ano_atual, mes_atual=mes_atual) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-chevron-left me-1"></i>Mês Anterior
+            </a>
+            <button type="button" class="btn btn-outline-primary" disabled>
+                {{ mes_nome }} {{ ano_atual }}
+            </button>
+            <a href="{{ url_for('transacoes', mes='proximo', ano=ano_atual, mes_atual=mes_atual) }}" class="btn btn-outline-secondary">
+                Próximo Mês<i class="fas fa-chevron-right ms-1"></i>
+            </a>
+        </div>
+        <a href="{{ url_for('nova_transacao') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Nova Transação
+        </a>
+    </div>
 </div>
 
 <!-- Filtros -->
@@ -49,17 +63,23 @@
             <div class="col-md-2">
                 <label for="data_inicio" class="form-label">Data Início</label>
                 <input type="date" class="form-control" name="data_inicio" id="data_inicio" value="{{ filtros.data_inicio or '' }}">
+                {% if filtros.data_inicio %}
+                <div class="form-text small">{{ filtros.data_inicio|replace('-', '/') }}</div>
+                {% endif %}
             </div>
             <div class="col-md-2">
                 <label for="data_fim" class="form-label">Data Fim</label>
                 <input type="date" class="form-control" name="data_fim" id="data_fim" value="{{ filtros.data_fim or '' }}">
+                {% if filtros.data_fim %}
+                <div class="form-text small">{{ filtros.data_fim|replace('-', '/') }}</div>
+                {% endif %}
             </div>
             <div class="col-12">
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-search me-1"></i>Filtrar
                     </button>
-                    <a href="{{ url_for('transacoes') }}" class="btn btn-outline-secondary">
+                    <a href="{{ url_for('transacoes', limpar_filtros=true) }}" class="btn btn-outline-secondary">
                         <i class="fas fa-times me-1"></i>Limpar
                     </a>
                 </div>
@@ -338,6 +358,26 @@ function changePerPage(perPage) {
     url.searchParams.set('page', 1); // Voltar para a primeira página ao mudar a quantidade
     window.location.href = url.toString();
 }
+
+// Atualizar campos de data quando um mês específico for selecionado
+document.addEventListener('DOMContentLoaded', function() {
+    // Verificar se o formulário tem filtros de data aplicados
+    const dataInicio = document.getElementById('data_inicio');
+    const dataFim = document.getElementById('data_fim');
+    
+    // Se as datas estão preenchidas e não foram definidas pelo usuário,
+    // destacar que são filtros automáticos do mês
+    if (dataInicio.value && dataFim.value) {
+        const dataInicioTxt = document.createElement('div');
+        dataInicioTxt.className = 'text-info small mt-1';
+        dataInicioTxt.textContent = 'Filtro mensal aplicado';
+        
+        // Inserir apenas se ainda não existe
+        if (!dataInicio.parentNode.querySelector('.text-info')) {
+            dataInicio.parentNode.appendChild(dataInicioTxt);
+        }
+    }
+});
 
 // Dados de categorias recebidos do backend
 const categorias = {{ categorias|tojson }};

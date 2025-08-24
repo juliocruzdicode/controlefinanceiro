@@ -995,12 +995,58 @@ def transacoes():
     # Aplicar filtros se fornecidos
     query = Transacao.query.filter_by(user_id=current_user.id)
     
+    # Parâmetros para navegação por mês
+    from datetime import datetime, date
+    from dateutil.relativedelta import relativedelta
+    
+    # Determinar o mês e ano atuais ou navegados
+    hoje = date.today()
+    mes_param = request.args.get('mes')
+    ano_atual = request.args.get('ano', hoje.year, type=int)
+    mes_atual = request.args.get('mes_atual', hoje.month, type=int)
+    
+    # Ajustar mês e ano com base na navegação
+    if mes_param == 'anterior':
+        # Mês anterior
+        if mes_atual == 1:
+            mes_atual = 12
+            ano_atual -= 1
+        else:
+            mes_atual -= 1
+    elif mes_param == 'proximo':
+        # Próximo mês
+        if mes_atual == 12:
+            mes_atual = 1
+            ano_atual += 1
+        else:
+            mes_atual += 1
+    
+    # Lista de nomes dos meses em português
+    meses_nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+    mes_nome = meses_nomes[mes_atual - 1]
+    
     # Filtros opcionais
     categoria_id = request.args.get('categoria_id', type=int)
     conta_id = request.args.get('conta_id', type=int)
     tipo = request.args.get('tipo')
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
+    limpar_filtros = request.args.get('limpar_filtros', False, type=bool)
+    
+    # Se não houver filtros de data, usar o mês atual/navegado
+    if not data_inicio and not data_fim and not limpar_filtros:
+        # Definir o primeiro dia do mês selecionado
+        primeiro_dia = date(ano_atual, mes_atual, 1)
+        # Definir o último dia do mês selecionado
+        if mes_atual == 12:
+            ultimo_dia = date(ano_atual + 1, 1, 1) - relativedelta(days=1)
+        else:
+            ultimo_dia = date(ano_atual, mes_atual + 1, 1) - relativedelta(days=1)
+        
+        # Formatar as datas para string no formato ISO
+        data_inicio = primeiro_dia.strftime('%Y-%m-%d')
+        data_fim = ultimo_dia.strftime('%Y-%m-%d')
     
     if categoria_id:
         query = query.filter_by(categoria_id=categoria_id)
@@ -1009,11 +1055,9 @@ def transacoes():
     if tipo:
         query = query.filter_by(tipo=tipo)
     if data_inicio:
-        from datetime import datetime
         data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
         query = query.filter(Transacao.data_transacao >= data_inicio_dt)
     if data_fim:
-        from datetime import datetime
         data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
         query = query.filter(Transacao.data_transacao <= data_fim_dt)
     
@@ -1060,6 +1104,9 @@ def transacoes():
                          contas=contas,
                          per_page_options=per_page_options,
                          current_per_page=per_page,
+                         ano_atual=ano_atual,
+                         mes_atual=mes_atual,
+                         mes_nome=mes_nome,
                          filtros={
                              'categoria_id': categoria_id,
                              'conta_id': conta_id,
