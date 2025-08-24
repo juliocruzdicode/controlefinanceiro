@@ -384,7 +384,7 @@ class TransacaoRecorrente(db.Model):
         db.session.commit()
         return nova_transacao
     
-    def gerar_transacoes_pendentes(self, meses_futuros=24, apenas_projetar=False):
+    def gerar_transacoes_pendentes(self, meses_futuros=600, apenas_projetar=False):
         """
         Gera todas as transações pendentes até a data_fim, se definida,
         ou até o número de meses futuros especificado.
@@ -463,8 +463,9 @@ class TransacaoRecorrente(db.Model):
         # 2. Não atingirmos o limite máximo de iterações (segurança)
         # 3. A data da próxima transação não exceder o limite
         while not self.is_finalizada and iteracoes < max_iteracoes and proxima_data <= data_limite:
+            print(f"[DEBUG] iteração {iteracoes}: proxima_data={proxima_data}, data_limite={data_limite}, is_finalizada={self.is_finalizada}, max_iteracoes={max_iteracoes}")
             iteracoes += 1
-            
+
             # Verificar se a data já foi processada (para evitar duplicatas)
             data_str = proxima_data.strftime('%Y-%m-%d')
             if data_str in datas_processadas:
@@ -478,15 +479,13 @@ class TransacaoRecorrente(db.Model):
             # NOVA LÓGICA: Determinar se é transação futura (após final do mês atual)
             data_transacao_date = proxima_data.date() if isinstance(proxima_data, datetime) else proxima_data
             
-            # Verificar se já existe uma transação nesta data para esta recorrência
-            transacao_existente = Transacao.query.filter_by(
-                recorrencia_id=self.id,
-                data_transacao=proxima_data
-            ).first()
-            
+
+            # Verificar se já existe uma transação real para esta data (ignorando horário)
+            data_prox = proxima_data.date() if hasattr(proxima_data, 'date') else proxima_data
+            transacao_existente = next((t for t in self.transacoes
+                                        if t.recorrencia_id == self.id and t.data_transacao.date() == data_prox), None)
             if transacao_existente:
                 print(f"Transação já existe para {proxima_data}, pulando")
-                # Avançar para a próxima data
                 proxima_data = self.calcular_proxima_data(proxima_data)
                 continue
                 

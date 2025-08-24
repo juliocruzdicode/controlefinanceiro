@@ -1104,12 +1104,11 @@ def transacoes():
         
         print(f"DEBUG - Total de recorrências ativas: {len(recorrentes_ativas)}")
         
+        MESES_FUTUROS_PADRAO = 600
         for recorrente in recorrentes_ativas:
             print(f"DEBUG - Processando recorrência: {recorrente.id} - {recorrente.descricao}")
-            
             # Gerar transações projetadas usando o método atualizado (apenas projeções)
-            transacoes_projetadas = recorrente.gerar_transacoes_pendentes(meses_futuros=6, apenas_projetar=True)
-            
+            transacoes_projetadas = recorrente.gerar_transacoes_pendentes(meses_futuros=MESES_FUTUROS_PADRAO, apenas_projetar=True)
             # Filtrar apenas as transações deste mês
             for projecao in transacoes_projetadas:
                 if primeiro_dia_mes <= projecao.data_transacao <= ultimo_dia_mes:
@@ -1620,7 +1619,7 @@ def nova_transacao():
                 db.session.commit()
                 
                 # Definir horizonte de meses futuros
-                meses_futuros = 12
+                meses_futuros = 600
                 
                 # Se tem data_fim, usar isso como limite
                 if recorrente.data_fim:
@@ -2444,13 +2443,11 @@ def gerar_transacoes_pendentes(recorrente_id):
     """Gera manualmente as transações pendentes de uma recorrência"""
     try:
         # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 24, type=int)
+        meses_futuros = request.args.get('meses', 600, type=int)
         
         # Validar meses_futuros (mínimo 1, máximo 60)
         if meses_futuros < 1:
             meses_futuros = 1
-        elif meses_futuros > 60:
-            meses_futuros = 60
         
         recorrente = TransacaoRecorrente.query.filter_by(id=recorrente_id, user_id=current_user.id).first_or_404()
         
@@ -2530,13 +2527,11 @@ def projetar_transacoes_futuras():
     """Projeta transações futuras sem salvá-las no banco de dados"""
     try:
         # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 24, type=int)
+        meses_futuros = request.args.get('meses', 600, type=int)
         
         # Validar meses_futuros (mínimo 1, máximo 60)
         if meses_futuros < 1:
             meses_futuros = 1
-        elif meses_futuros > 60:
-            meses_futuros = 60
         
         recorrentes_ativas = TransacaoRecorrente.query.filter_by(
             status=StatusRecorrencia.ATIVA, 
@@ -2671,36 +2666,36 @@ def consolidar_projecoes():
                 projecoes_data = data.get('projecoes_data', [])
                 projecao = next((p for p in projecoes_data if p.get('id') == projecao_id), None)
                 
-                if projecao:
-                    recorrencia_id = projecao.get('recorrencia_id')
-                    data_projecao = projecao.get('data')
-            
-            # Se ainda não temos os dados, pular esta projeção
-            if not recorrencia_id or not data_projecao:
-                app.logger.warning(f"Dados incompletos para projeção ID {projecao_id}, pulando")
-                continue
-                
-            # Buscar a recorrência
-            recorrente = TransacaoRecorrente.query.get(recorrencia_id)
-            if not recorrente or recorrente.user_id != current_user.id:
-                app.logger.warning(f"Recorrência ID {recorrencia_id} não encontrada ou não pertence ao usuário atual")
-                continue
-            
-            # Verificar se já existe uma transação nesta data para esta recorrência
-            data_dt = datetime.strptime(data_projecao, '%Y-%m-%d')
-            transacao_existente = Transacao.query.filter_by(
-                recorrencia_id=recorrencia_id,
-                data_transacao=data_dt
-            ).first()
-            
-            # Se já existe, pular
-            if transacao_existente:
-                app.logger.warning(f"Já existe uma transação para recorrência ID {recorrencia_id} na data {data_projecao}")
-                continue
-                
-            # Criar transação real
-            nova_transacao = Transacao(
-                descricao=recorrente.descricao,
+                try:
+                    # Parâmetro para número de meses
+                    meses_futuros = request.args.get('meses', 600, type=int)
+                    # Validar meses_futuros (mínimo 1)
+                    if meses_futuros < 1:
+                        meses_futuros = 1
+                    recorrente = TransacaoRecorrente.query.filter_by(id=recorrente_id, user_id=current_user.id).first_or_404()
+                    # Se tem data_fim, usar isso como limite
+                    if recorrente.data_fim:
+                        # Gerar transações passadas e projetar futuras
+                        transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=True)
+                        transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
+                        projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
+                        mensagem = f'{len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) até {recorrente.data_fim.strftime("%d/%m/%Y")}'
+                    else:
+                        # Gerar transações para os próximos meses
+                        transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros, apenas_projetar=True)
+                        transacoes_reais = [t for t in transacoes_geradas if not hasattr(t, 'is_projetada') or not t.is_projetada]
+                        projecoes = [t for t in transacoes_geradas if hasattr(t, 'is_projetada') and t.is_projetada]
+                        mensagem = f'{len(transacoes_reais)} transação(ões) gerada(s) e {len(projecoes)} projetada(s) para os próximos {meses_futuros} meses'
+                    return jsonify({
+                        'success': True,
+                        'message': mensagem,
+                        'transacoes_geradas': len(transacoes_geradas),
+                        'meses_futuros': meses_futuros,
+                        'tem_data_fim': recorrente.data_fim is not None,
+                        'data_fim': recorrente.data_fim.strftime('%d/%m/%Y') if recorrente.data_fim else None
+                    })
+                except Exception as e:
+                    return jsonify({'success': False, 'message': str(e)}), 500
                 valor=recorrente.valor,
                 tipo=recorrente.tipo,
                 data_transacao=data_dt,
@@ -2708,7 +2703,7 @@ def consolidar_projecoes():
                 conta_id=recorrente.conta_id,
                 recorrencia_id=recorrente.id,
                 user_id=current_user.id
-            )
+            
             
             db.session.add(nova_transacao)
             consolidadas.append(projecao_id)
@@ -2740,13 +2735,11 @@ def gerar_todas_transacoes_pendentes():
     """Gera todas as transações pendentes de todas as recorrências ativas"""
     try:
         # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 24, type=int)
+        meses_futuros = request.args.get('meses', 600, type=int)
         
         # Validar meses_futuros (mínimo 1, máximo 60)
         if meses_futuros < 1:
             meses_futuros = 1
-        elif meses_futuros > 60:
-            meses_futuros = 60
         
         recorrentes_ativas = TransacaoRecorrente.query.filter_by(
             status=StatusRecorrencia.ATIVA, 
@@ -2942,44 +2935,44 @@ def admin_adicionar_categorias_padrao(user_id):
     
     # Verificar se o usuário existe
     usuario = Usuario.query.get(user_id)
-    if not usuario:
-        flash('Usuário não encontrado.', 'danger')
-        return redirect(url_for('admin'))
-    
-    # Verificar confirmação
-    confirmacao = request.args.get('confirmar', 'false')
-    if confirmacao != 'true':
-        return render_template('admin/confirmar_categorias_padrao.html', 
-                              usuario=usuario, 
-                              acao='individual',
-                              url=url_for('admin_adicionar_categorias_padrao', user_id=user_id, confirmar='true'))
-    
-    # Adicionar categorias padrão
-    resultado = criar_categorias_padrao(user_id)
-    
-    if resultado:
-        flash(f'Categorias para {usuario.username}: {resultado["adicionadas"]} adicionadas, {resultado["ja_existentes"]} já existentes, {resultado["total"]} total.', 'success')
-    else:
-        flash(f'Erro ao adicionar categorias padrão para {usuario.username}.', 'danger')
-    
-    return redirect(url_for('admin'))
-
-@app.route('/admin/adicionar-categorias-padrao-todos')
-@login_required
-def admin_adicionar_categorias_padrao_todos():
-    """Adiciona categorias padrão para todos os usuários"""
-    # Verificar se é administrador
-    if not current_user.is_admin:
-        flash('Acesso negado. Apenas administradores podem acessar esta página.', 'danger')
-        return redirect(url_for('dashboard'))
-    
-    # Verificar confirmação
-    confirmacao = request.args.get('confirmar', 'false')
-    if confirmacao != 'true':
-        return render_template('admin/confirmar_categorias_padrao.html', 
-                              acao='todos',
-                              url=url_for('admin_adicionar_categorias_padrao_todos', confirmar='true'))
-    
+    try:
+        # Parâmetro para número de meses
+        meses_futuros = request.args.get('meses', 600, type=int)
+        # Validar meses_futuros (mínimo 1)
+        if meses_futuros < 1:
+            meses_futuros = 1
+        recorrentes_ativas = TransacaoRecorrente.query.filter_by(
+            status=StatusRecorrencia.ATIVA, 
+            user_id=current_user.id
+        ).all()
+        total_transacoes_geradas = 0
+        recorrentes_com_data_fim = 0
+        for recorrente in recorrentes_ativas:
+            # Se tem data_fim, usar isso como limite
+            if recorrente.data_fim:
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(apenas_projetar=True)
+                recorrentes_com_data_fim += 1
+            else:
+                # Gerar transações para os próximos meses
+                transacoes_geradas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros, apenas_projetar=True)
+            total_transacoes_geradas += len(transacoes_geradas)
+        # Construir mensagem personalizada
+        if recorrentes_com_data_fim > 0 and recorrentes_com_data_fim < len(recorrentes_ativas):
+            mensagem = f'{total_transacoes_geradas} transação(ões) gerada(s): {recorrentes_com_data_fim} recorrência(s) até a data fim e {len(recorrentes_ativas) - recorrentes_com_data_fim} para os próximos {meses_futuros} meses'
+        elif recorrentes_com_data_fim == len(recorrentes_ativas):
+            mensagem = f'{total_transacoes_geradas} transação(ões) gerada(s) até as datas de fim das recorrências'
+        else:
+            mensagem = f'{total_transacoes_geradas} transação(ões) gerada(s) para os próximos {meses_futuros} meses'
+        return jsonify({
+            'success': True,
+            'message': mensagem,
+            'recorrentes_processadas': len(recorrentes_ativas),
+            'recorrentes_com_data_fim': recorrentes_com_data_fim,
+            'transacoes_geradas': total_transacoes_geradas,
+            'meses_futuros': meses_futuros
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
     # Buscar todos os usuários
     usuarios = Usuario.query.all()
     count_success = 0
