@@ -1888,29 +1888,81 @@ def relatorios():
                 p.is_projetada = True
             transacoes_projetadas.extend(projecoes)
 
-    # Unir transações reais e projetadas, evitando duplicidade de data/recorrencia
-    datas_reais = set((t.data_transacao.date(), t.recorrencia_id) for t in transacoes)
-    transacoes_projetadas_filtradas = [p for p in transacoes_projetadas if (p.data_transacao.date(), p.recorrencia_id) not in datas_reais]
-    transacoes.extend(transacoes_projetadas_filtradas)
+    # Unir transações reais e projetadas, evitando duplicidade
+    # Para recorrentes: priorizar real sobre projetada por (ano, mês, recorrencia_id)
+    # Para não recorrentes: deduplicar por (ano, mês, categoria_id, tipo)
+    transacoes_unicas = {}
+    print("==== DEBUG RELATORIO: TRANSAÇÕES REAIS ====")
+    for t in transacoes:
+        if t.recorrencia_id:
+            chave = (t.data_transacao.year, t.data_transacao.month, t.recorrencia_id)
+        else:
+            chave = (t.data_transacao.year, t.data_transacao.month, t.categoria_id, t.tipo)
+        print(f"REAL: chave={chave} valor={t.valor} id={getattr(t, 'id', None)} recorrencia_id={t.recorrencia_id} data={t.data_transacao}")
+        transacoes_unicas[chave] = t
+    print("==== DEBUG RELATORIO: TRANSAÇÕES PROJETADAS ====")
+    for p in transacoes_projetadas:
+        if p.recorrencia_id:
+            chave = (p.data_transacao.year, p.data_transacao.month, p.recorrencia_id)
+        else:
+            chave = (p.data_transacao.year, p.data_transacao.month, p.categoria_id, p.tipo)
+        print(f"PROJETADA: chave={chave} valor={p.valor} recorrencia_id={p.recorrencia_id} data={p.data_transacao}")
+        if chave not in transacoes_unicas:
+            transacoes_unicas[chave] = p
+    print(f"==== DEBUG RELATORIO: TOTAL TRANSACOES UNICAS: {len(transacoes_unicas)} ====")
+    transacoes = list(transacoes_unicas.values())
+    # Filtrar apenas transações do ano selecionado (evita somar projeções de outros anos)
+    try:
+        ano = int(ano)
+    except Exception:
+        ano = datetime.now().year
+    transacoes = [t for t in transacoes if t.data_transacao.year == ano]
     
     # Gerar meses do ano
     meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 
              'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
     
-    # Calcular totais mensais
+    # Calcular totais mensais sem duplicidade por recorrencia/categoria/tipo
     totais_mensais = {}
     for i, mes in enumerate(meses, 1):
-        mes_transacoes = [t for t in transacoes if t.data_transacao.month == i]
-        totais_mensais[mes] = {
-            'receita': sum(t.valor for t in mes_transacoes if t.tipo == TipoTransacao.RECEITA),
-            'despesa': sum(t.valor for t in mes_transacoes if t.tipo == TipoTransacao.DESPESA)
-        }
-    
+        # Agrupar por (categoria_id, tipo, recorrencia_id) para evitar duplicidade
+        vistos = set()
+        receita = 0
+        despesa = 0
+        for t in transacoes:
+            if t.data_transacao.month != i:
+                continue
+            if t.recorrencia_id:
+                chave = (t.data_transacao.year, t.data_transacao.month, t.recorrencia_id)
+            else:
+                chave = (t.data_transacao.year, t.data_transacao.month, t.categoria_id, t.tipo)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            if t.tipo == TipoTransacao.RECEITA:
+                receita += t.valor
+            elif t.tipo == TipoTransacao.DESPESA:
+                despesa += t.valor
+        totais_mensais[mes] = {'receita': receita, 'despesa': despesa}
+
     # Calcular totais gerais
-    total_receitas = sum(t.valor for t in transacoes if t.tipo == TipoTransacao.RECEITA)
-    total_despesas = sum(t.valor for t in transacoes if t.tipo == TipoTransacao.DESPESA)
+    vistos = set()
+    total_receitas = 0
+    total_despesas = 0
+    for t in transacoes:
+        if t.recorrencia_id:
+            chave = (t.data_transacao.year, t.data_transacao.month, t.recorrencia_id)
+        else:
+            chave = (t.data_transacao.year, t.data_transacao.month, t.categoria_id, t.tipo)
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        if t.tipo == TipoTransacao.RECEITA:
+            total_receitas += t.valor
+        elif t.tipo == TipoTransacao.DESPESA:
+            total_despesas += t.valor
     saldo_geral = total_receitas - total_despesas
-    total_transacoes = len(transacoes)
+    total_transacoes = len(vistos)
     
     # Organizar categorias por tipo
     categorias_receitas = []
@@ -1960,17 +2012,37 @@ def relatorios():
             categoria.total_despesa = total_despesa
             categorias_despesas.append(categoria)
     
-    # Criar matriz de dados (categoria x mês)
+    # Criar matriz de dados (categoria x mês) sem duplicidade
     matriz_dados = {}
     for categoria in categorias_receitas + categorias_despesas:
         matriz_dados[categoria.id] = {}
-        categoria_transacoes = [t for t in transacoes if t.categoria_id == categoria.id]
-        
         for i, mes in enumerate(meses, 1):
-            mes_transacoes = [t for t in categoria_transacoes if t.data_transacao.month == i]
-            valor_mes = sum(t.valor for t in mes_transacoes)
+            vistos = set()
+            valor_mes = 0
+            for t in transacoes:
+                if t.categoria_id != categoria.id or t.data_transacao.month != i:
+                    continue
+                if t.recorrencia_id:
+                    chave = (t.data_transacao.year, t.data_transacao.month, t.recorrencia_id)
+                else:
+                    chave = (t.data_transacao.year, t.data_transacao.month, t.categoria_id, t.tipo)
+                if chave in vistos:
+                    continue
+                vistos.add(chave)
+                valor_mes += t.valor
             matriz_dados[categoria.id][mes] = valor_mes if valor_mes > 0 else 0
     
+    # Debug: imprimir totais_mensais e matriz_dados para inspeção
+    try:
+        print('==== DEBUG RELATORIO: TOTAIS_MENSAIS ====')
+        for m in meses:
+            print(f"{m}: receita={totais_mensais[m]['receita']}, despesa={totais_mensais[m]['despesa']}")
+        print('==== DEBUG RELATORIO: MATRIZ_DADOS ====')
+        for cat_id, row in matriz_dados.items():
+            print(f"Categoria {cat_id}: " + ", ".join([f"{mes}={row.get(mes,0)}" for mes in meses]))
+    except Exception as e:
+        print('DEBUG RELATORIO ERROR:', e)
+
     return render_template('relatorios.html',
                          anos_disponiveis=anos_disponiveis,
                          ano=ano,
