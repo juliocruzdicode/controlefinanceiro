@@ -13,6 +13,26 @@ import io
 import base64
 import os
 from utils import criar_categorias_padrao
+import json
+from pathlib import Path
+
+# Cache for cidades list
+_CIDADES_CACHE = None
+
+def _load_cidades():
+    global _CIDADES_CACHE
+    if _CIDADES_CACHE is not None:
+        return _CIDADES_CACHE
+    try:
+        path = Path(__file__).parent / 'data' / 'cidades.json'
+        if path.exists():
+            with open(path, 'r', encoding='utf-8') as f:
+                _CIDADES_CACHE = json.load(f)
+        else:
+            _CIDADES_CACHE = []
+    except Exception:
+        _CIDADES_CACHE = []
+    return _CIDADES_CACHE
 
 # Carrega as variáveis de ambiente do arquivo .env
 from dotenv import load_dotenv
@@ -2717,6 +2737,21 @@ def projetar_transacoes_futuras():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/cidades')
+def api_cidades():
+    """Retorna sugestões de cidades a partir do parâmetro q (substring, case-insensitive)."""
+    q = request.args.get('q', '', type=str).strip()
+    if not q:
+        return jsonify({'success': True, 'results': []})
+
+    cidades = _load_cidades()
+    q_lower = q.lower()
+    matches = [c for c in cidades if q_lower in c.lower()]
+    # limitar resultados
+    matches = matches[:10]
+    return jsonify({'success': True, 'results': matches})
 
 @app.route('/api/consolidar-projecoes', methods=['POST'])
 @login_required

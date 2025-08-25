@@ -93,7 +93,9 @@
                     
                     <div class="mb-3">
                         {{ form.cidade.label(class="form-label") }}
-                        {{ form.cidade(class="form-control" + (" is-invalid" if form.cidade.errors else "")) }}
+                    {{ form.cidade(class="form-control" + (" is-invalid" if form.cidade.errors else ""), id="cidadeInput", autocomplete="off") }}
+                    <div class="list-group" id="cidadeSuggestions" style="position: absolute; z-index: 1050; display: none;
+                        max-height: 240px; overflow-y: auto; width: 100%;"></div>
                         {% if form.cidade.errors %}
                             <div class="invalid-feedback">
                                 {{ form.cidade.errors[0] }}
@@ -211,5 +213,61 @@ body {
             clearIfNotMatch: true
         });
     });
+
+    // Autocomplete para campo cidade
+    (function() {
+        const input = document.getElementById('cidadeInput');
+        const suggestions = document.getElementById('cidadeSuggestions');
+        if (!input) return;
+
+        let lastQuery = '';
+        let items = [];
+
+        function showSuggestions(list) {
+            suggestions.innerHTML = '';
+            if (!list.length) { suggestions.style.display = 'none'; return; }
+            list.forEach(item => {
+                const a = document.createElement('a');
+                a.href = '#';
+                a.className = 'list-group-item list-group-item-action';
+                a.textContent = item;
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    input.value = item;
+                    suggestions.style.display = 'none';
+                });
+                suggestions.appendChild(a);
+            });
+            const rect = input.getBoundingClientRect();
+            suggestions.style.width = rect.width + 'px';
+            suggestions.style.display = 'block';
+        }
+
+        let timer = null;
+        input.addEventListener('input', function() {
+            const q = input.value.trim();
+            if (q.length < 2) { suggestions.style.display = 'none'; return; }
+            if (q === lastQuery) return;
+            lastQuery = q;
+            clearTimeout(timer);
+            timer = setTimeout(async function() {
+                try {
+                    const resp = await fetch('/api/cidades?q=' + encodeURIComponent(q));
+                    const data = await resp.json();
+                    items = data.results || [];
+                    showSuggestions(items);
+                } catch (err) {
+                    console.error('Erro ao buscar cidades', err);
+                }
+            }, 200);
+        });
+
+        // fechar sugestões ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (!suggestions.contains(e.target) && e.target !== input) {
+                suggestions.style.display = 'none';
+            }
+        });
+    })();
 </script>
 {% endblock %}
