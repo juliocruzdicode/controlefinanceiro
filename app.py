@@ -1081,7 +1081,7 @@ def transacoes():
         
         print(f"DEBUG - Total de recorrências ativas: {len(recorrentes_ativas)}")
         
-        MESES_FUTUROS_PADRAO = 600
+        MESES_FUTUROS_PADRAO = 36
         for recorrente in recorrentes_ativas:
             print(f"DEBUG - Processando recorrência: {recorrente.id} - {recorrente.descricao}")
             # Gerar transações projetadas usando o método atualizado (apenas projeções)
@@ -1548,7 +1548,7 @@ def nova_transacao():
                 db.session.commit()
                 
                 # Definir horizonte de meses futuros
-                meses_futuros = 600
+                meses_futuros = 36
                 
                 # Se tem data_fim, usar isso como limite
                 if recorrente.data_fim:
