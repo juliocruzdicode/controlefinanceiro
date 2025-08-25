@@ -31,7 +31,7 @@
                                 {{ form.valor.label(class="form-label") }}
                                 <div class="input-group">
                                     <span class="input-group-text">R$</span>
-                                    {{ form.valor(class="form-control" + (" is-invalid" if form.valor.errors else ""), step="0.01") }}
+                                    {{ form.valor(class="form-control" + (" is-invalid" if form.valor.errors else ""), id="valorInput", step="0.01") }}
                                     {% if form.valor.errors %}
                                         <div class="invalid-feedback">
                                             {% for error in form.valor.errors %}{{ error }}{% endfor %}
@@ -256,6 +256,7 @@ window.addEventListener('DOMContentLoaded', function() {
     // Carregar tags disponíveis
     loadTagSuggestions();
     setupTagInput();
+    setupValorMask();
 });
 
 // Carregar sugestões de tags
@@ -355,6 +356,51 @@ function updateTagsInput() {
     
     document.getElementById('tagsInput').value = selectedTags.join(', ');
 }
+
+// --- Máscara de entrada para o campo valor (pt-BR) ----------------------
+function setupValorMask() {
+    const el = document.getElementById('valorInput');
+    if (!el) return;
+
+    // Formata o campo exibido como moeda brasileira
+    function formatEl() {
+        // Extrai apenas dígitos
+        const digits = el.value.replace(/\D/g, '');
+        const number = parseInt(digits || '0', 10);
+        const formatted = (number / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        el.value = formatted;
+    }
+
+    // Ao digitar, manter somente dígitos e reformatar
+    el.addEventListener('input', function(e) {
+        // Guardar posição do cursor não tratado (simple approach)
+        const caret = el.selectionStart;
+        formatEl();
+        try { el.setSelectionRange(caret, caret); } catch (err) {}
+    });
+
+    // Ao colar, permitir e formatar
+    el.addEventListener('paste', function(e) {
+        setTimeout(formatEl, 0);
+    });
+
+    // Ao perder foco, garantir formatação correta
+    el.addEventListener('blur', function() {
+        formatEl();
+    });
+
+    // Ao submeter o formulário, converter para formato parseável pelo servidor (ex: 1234.56)
+    const form = el.closest('form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            // Converter '1.234,56' -> '1234.56'
+            const raw = el.value.replace(/\./g, '').replace(/,/g, '.').replace(/[^0-9.\-]/g, '');
+            el.value = raw;
+        });
+    }
+}
+
+// ------------------------------------------------------------------------
 </script>
 
 <!-- Modal Nova Categoria -->
