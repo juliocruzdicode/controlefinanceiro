@@ -34,6 +34,34 @@ db.init_app(app)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
 app.config['SESSION_TYPE'] = 'filesystem'
 
+# Centralizar configuração do horizonte de projeções (meses)
+# MESES_FUTUROS_DEFAULT: valor padrão usado quando não fornecido via request
+# MESES_FUTUROS_MAX: limite máximo permitido
+app.config.setdefault('MESES_FUTUROS_DEFAULT', 36)
+app.config.setdefault('MESES_FUTUROS_MAX', 60)
+
+
+def obter_meses_futuros_from_request(param_name: str = 'meses', default: int | None = None) -> int:
+    """Lê o parâmetro de meses da request e aplica valores padrão e limites a partir do app.config.
+
+    Deve ser chamado dentro de um contexto de request.
+    """
+    if default is None:
+        default = app.config.get('MESES_FUTUROS_DEFAULT', 36)
+    try:
+        meses = request.args.get(param_name, default, type=int)
+    except Exception:
+        meses = default
+    if meses is None:
+        meses = default
+    # Garantir mínimo 1
+    if meses < 1:
+        meses = 1
+    max_meses = app.config.get('MESES_FUTUROS_MAX', 60)
+    if meses > max_meses:
+        meses = max_meses
+    return meses
+
 # Debug - Verificar se as variáveis de ambiente estão carregadas
 print(f"GOOGLE_CLIENT_ID: {os.environ.get('GOOGLE_CLIENT_ID')}")
 print(f"GOOGLE_CLIENT_SECRET: {os.environ.get('GOOGLE_CLIENT_SECRET')}")
@@ -1081,11 +1109,12 @@ def transacoes():
         
         print(f"DEBUG - Total de recorrências ativas: {len(recorrentes_ativas)}")
         
-        MESES_FUTUROS_PADRAO = 36
+        # usar configuração centralizada para horizonte de projeções
+        meses_padrao_projecoes = app.config.get('MESES_FUTUROS_DEFAULT', 36)
         for recorrente in recorrentes_ativas:
             print(f"DEBUG - Processando recorrência: {recorrente.id} - {recorrente.descricao}")
             # Gerar transações projetadas usando o método atualizado (apenas projeções)
-            transacoes_projetadas = recorrente.gerar_transacoes_pendentes(meses_futuros=MESES_FUTUROS_PADRAO, apenas_projetar=True)
+            transacoes_projetadas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_padrao_projecoes, apenas_projetar=True)
             # Filtrar apenas as transações deste mês
             for projecao in transacoes_projetadas:
                 if primeiro_dia_mes <= projecao.data_transacao <= ultimo_dia_mes:
@@ -1148,8 +1177,8 @@ def transacoes():
     
     # Calcular quantos meses no total gerar a partir de hoje
     if diferenca_meses <= 0:
-        # Para meses atuais ou passados, gerar pelo menos 36 meses à frente
-        meses_para_gerar = 36
+        # Para meses atuais ou passados, gerar pelo menos o padrão configurado à frente
+        meses_para_gerar = app.config.get('MESES_FUTUROS_DEFAULT', 36)
     else:
         # Para meses futuros, gerar até a data visualizada + buffer
         meses_para_gerar = diferenca_meses + meses_alem_visualizacao
@@ -1547,8 +1576,8 @@ def nova_transacao():
                 db.session.add(recorrente)
                 db.session.commit()
                 
-                # Definir horizonte de meses futuros
-                meses_futuros = 36
+                # Definir horizonte de meses futuros (usar valor padrão da configuração)
+                meses_futuros = app.config.get('MESES_FUTUROS_DEFAULT', 36)
                 
                 # Se tem data_fim, usar isso como limite
                 if recorrente.data_fim:
@@ -2440,8 +2469,8 @@ def nova_transacao_recorrente():
             db.session.add(recorrente)
             db.session.commit()
             
-            # Definir horizonte de meses futuros
-            meses_futuros = 12
+            # Definir horizonte de meses futuros (usar valor padrão da configuração)
+            meses_futuros = app.config.get('MESES_FUTUROS_DEFAULT', 36)
             
             # Se tem data_fim, usar isso como limite
             if recorrente.data_fim:
@@ -2513,12 +2542,8 @@ def editar_transacao_recorrente(recorrente_id):
 def gerar_transacoes_pendentes(recorrente_id):
     """Gera manualmente as transações pendentes de uma recorrência"""
     try:
-        # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 600, type=int)
-        
-        # Validar meses_futuros (mínimo 1, máximo 60)
-        if meses_futuros < 1:
-            meses_futuros = 1
+        # Parâmetro para número de meses (usa helper que aplica limites/config)
+        meses_futuros = obter_meses_futuros_from_request()
         
         recorrente = TransacaoRecorrente.query.filter_by(id=recorrente_id, user_id=current_user.id).first_or_404()
         
@@ -2597,12 +2622,8 @@ def api_transacoes_recorrentes():
 def projetar_transacoes_futuras():
     """Projeta transações futuras sem salvá-las no banco de dados"""
     try:
-        # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 600, type=int)
-        
-        # Validar meses_futuros (mínimo 1, máximo 60)
-        if meses_futuros < 1:
-            meses_futuros = 1
+        # Parâmetro para número de meses (usa helper que aplica limites/config)
+        meses_futuros = obter_meses_futuros_from_request()
         
         recorrentes_ativas = TransacaoRecorrente.query.filter_by(
             status=StatusRecorrencia.ATIVA, 
@@ -2787,12 +2808,8 @@ def consolidar_projecoes():
 def gerar_todas_transacoes_pendentes():
     """Gera todas as transações pendentes de todas as recorrências ativas"""
     try:
-        # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 600, type=int)
-        
-        # Validar meses_futuros (mínimo 1, máximo 60)
-        if meses_futuros < 1:
-            meses_futuros = 1
+        # Parâmetro para número de meses (usa helper que aplica limites/config)
+        meses_futuros = obter_meses_futuros_from_request()
         
         recorrentes_ativas = TransacaoRecorrente.query.filter_by(
             status=StatusRecorrencia.ATIVA, 
@@ -2984,11 +3001,8 @@ def admin_adicionar_categorias_padrao(user_id):
     # Verificar se o usuário existe
     usuario = Usuario.query.get(user_id)
     try:
-        # Parâmetro para número de meses
-        meses_futuros = request.args.get('meses', 600, type=int)
-        # Validar meses_futuros (mínimo 1)
-        if meses_futuros < 1:
-            meses_futuros = 1
+        # Parâmetro para número de meses (usa helper que aplica limites/config)
+        meses_futuros = obter_meses_futuros_from_request()
         recorrentes_ativas = TransacaoRecorrente.query.filter_by(
             status=StatusRecorrencia.ATIVA, 
             user_id=current_user.id
