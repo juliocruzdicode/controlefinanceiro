@@ -293,12 +293,12 @@ function renderizarProjecoes(projecoes) {
                 ${valorFormatado}
             </td>
             <td>
-                <span class="badge ${projecao.status === 'consolidada' ? 'bg-success' : 'bg-secondary'}">
+                <span class="badge ${projecao.status === 'consolidada' ? 'bg-primary' : 'bg-secondary'}">
                     ${projecao.status === 'consolidada' ? 'Consolidada' : 'Projetada'}
                 </span>
             </td>
             <td>
-                ${projecao.status === 'projetada' ? 
+                    ${projecao.status === 'projetada' ? 
                     `<button class="btn btn-sm btn-success" onclick="consolidarUnica(${projecao.id})">
                         <i class="fas fa-check"></i>
                     </button>` : 
