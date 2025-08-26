@@ -31,7 +31,7 @@
                                 {{ form.valor.label(class="form-label") }}
                                 <div class="input-group">
                                     <span class="input-group-text">R$</span>
-                                    {{ form.valor(class="form-control" + (" is-invalid" if form.valor.errors else ""), id="valorInput", type="text", step="0.01") }}
+                                    {{ form.valor(class="form-control" + (" is-invalid" if form.valor.errors else ""), id="valorInput", inputmode="decimal", step="0.01") }}
                                     {% if form.valor.errors %}
                                         <div class="invalid-feedback">
                                             {% for error in form.valor.errors %}{{ error }}{% endfor %}
@@ -265,7 +265,6 @@ window.addEventListener('DOMContentLoaded', function() {
     // Carregar tags disponíveis
     loadTagSuggestions();
     setupTagInput();
-    setupValorMask();
 });
 
 // Carregar sugestões de tags
@@ -366,109 +365,7 @@ function updateTagsInput() {
     document.getElementById('tagsInput').value = selectedTags.join(', ');
 }
 
-// --- Máscara de entrada para o campo valor (pt-BR) ----------------------
-function setupValorMask() {
-    const el = document.getElementById('valorInput');
-    if (!el) return;
-
-    // Helper: count digits in a substring
-    function countDigits(str) {
-        return (str.match(/\d/g) || []).length;
-    }
-
-    // Given a formatted value and a target digit index, find caret position
-    function caretPosForDigitIndex(formatted, targetDigitIndex) {
-        if (targetDigitIndex <= 0) return 0;
-        let digitsSeen = 0;
-        for (let i = 0; i < formatted.length; i++) {
-            if (/\d/.test(formatted[i])) {
-                digitsSeen++;
-                if (digitsSeen >= targetDigitIndex) {
-                    // place caret after this digit
-                    return i + 1;
-                }
-            }
-        }
-        return formatted.length;
-    }
-
-    // Format digits string (cents) into pt-BR currency like '1.234,56'
-    function formatDigitsToCurrency(digits) {
-        if (!digits) return '';
-        // Ensure at least 3 chars to handle cents (e.g., '5' -> 0,05)
-        const num = parseInt(digits, 10) || 0;
-        const value = (num / 100).toFixed(2);
-        // Use Intl to format with thousands separator and comma
-        return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    // Main input handler preserves caret relative to digit index
-    el.addEventListener('input', function(e) {
-        const raw = el.value;
-        const selectionStart = el.selectionStart;
-
-        // Count how many digits are to the left of the caret in the raw input
-        const digitsLeft = countDigits(raw.slice(0, selectionStart));
-
-        // Extract all digits (treat as cents)
-        const digits = raw.replace(/\D/g, '');
-
-        // Format digits into currency
-        const formatted = formatDigitsToCurrency(digits);
-
-        // Set the formatted value
-        el.value = formatted;
-
-        // Compute new caret position for same digit index
-        const newPos = caretPosForDigitIndex(formatted, digitsLeft);
-        try { el.setSelectionRange(newPos, newPos); } catch (err) {}
-    });
-
-    // Better paste handling: clean pasted content and format
-    el.addEventListener('paste', function(e) {
-        e.preventDefault();
-        const pasted = (e.clipboardData || window.clipboardData).getData('text') || '';
-        const digits = pasted.replace(/\D/g, '');
-        if (!digits) return;
-        const currentDigits = el.value.replace(/\D/g, '');
-        // Insert pasted digits at caret position (as digits)
-        const selStart = el.selectionStart || 0;
-        const leftDigitsCount = countDigits(el.value.slice(0, selStart));
-        const left = currentDigits.slice(0, leftDigitsCount);
-        const right = currentDigits.slice(leftDigitsCount);
-        const newDigits = left + digits + right;
-        el.value = formatDigitsToCurrency(newDigits.replace(/^0+(?=\d)/, ''));
-        // place caret after pasted chunk
-        const newDigitIndex = left.length + digits.length;
-        const newPos = caretPosForDigitIndex(el.value, newDigitIndex);
-        try { el.setSelectionRange(newPos, newPos); } catch (err) {}
-    });
-
-    // On blur, ensure value is fully formatted (and not empty)
-    el.addEventListener('blur', function() {
-        const digits = el.value.replace(/\D/g, '');
-        if (!digits) {
-            el.value = '';
-            return;
-        }
-        el.value = formatDigitsToCurrency(digits);
-    });
-
-    // On form submit, convert '1.234,56' -> '1234.56' for server
-    const form = el.closest('form');
-    if (form) {
-        form.addEventListener('submit', function() {
-            const rawDigits = el.value.replace(/\D/g, '');
-            if (!rawDigits) {
-                el.value = '';
-                return;
-            }
-            const num = (parseInt(rawDigits, 10) || 0) / 100;
-            // Use dot as decimal separator for server
-            el.value = num.toFixed(2);
-        });
-    }
-}
+// (Máscara removida) O campo `valor` usará o comportamento nativo do input.
 
 // ------------------------------------------------------------------------
 </script>
