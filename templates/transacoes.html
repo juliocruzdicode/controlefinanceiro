@@ -156,25 +156,25 @@
         <div class="card bg-light">
             <div class="card-body text-center">
                 <h5 class="text-muted">Total de Transações</h5>
-                <h2 class="text-primary">{{ pagination.total }}</h2>
+            <h2 id="total-transacoes" class="text-primary">{{ pagination.total }}</h2>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-light">
+                <div class="card bg-light">
             <div class="card-body text-center">
                 <h5 class="text-muted">Receitas (página atual)</h5>
-                <h2 class="text-success">
+                        <h2 id="total-receitas-page" class="text-success">
                     {{ transacoes|selectattr("tipo.value", "equalto", "receita")|list|length }}
                 </h2>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-light">
+                <div class="card bg-light">
             <div class="card-body text-center">
                 <h5 class="text-muted">Despesas (página atual)</h5>
-                <h2 class="text-danger">
+                        <h2 id="total-despesas-page" class="text-danger">
                     {{ transacoes|selectattr("tipo.value", "equalto", "despesa")|list|length }}
                 </h2>
             </div>
@@ -331,8 +331,41 @@ function excluirTransacao(transacaoId, descricao, isRecorrente) {
             if (data.success) {
                 // Mostrar mensagem de sucesso
                 mostrarAlerta('success', data.message);
-                // Recarregar a página para atualizar a lista
-                setTimeout(() => location.reload(), 1500);
+
+                // Identificar tipo (antes de remover a linha)
+                const row = document.getElementById('transacao-' + transacaoId);
+                let wasReceita = false;
+                let wasDespesa = false;
+                if (row) {
+                    const valorStrong = row.querySelector('td .text-success, td .text-danger');
+                    if (valorStrong) {
+                        wasReceita = valorStrong.classList.contains('text-success');
+                        wasDespesa = valorStrong.classList.contains('text-danger');
+                    }
+                    // Remover linha da tabela imediatamente
+                    row.remove();
+                }
+
+                // Atualizar contadores na página (total, receitas, despesas)
+                const totalEl = document.getElementById('total-transacoes');
+                if (totalEl) {
+                    const total = parseInt(totalEl.textContent || '0', 10);
+                    totalEl.textContent = Math.max(0, total - 1);
+                }
+
+                try {
+                    const receitasEl = document.getElementById('total-receitas-page');
+                    const despesasEl = document.getElementById('total-despesas-page');
+                    if (receitasEl && wasReceita) {
+                        receitasEl.textContent = Math.max(0, parseInt(receitasEl.textContent || '0', 10) - 1);
+                    }
+                    if (despesasEl && wasDespesa) {
+                        despesasEl.textContent = Math.max(0, parseInt(despesasEl.textContent || '0', 10) - 1);
+                    }
+                } catch (e) {
+                    // ignore
+                }
+
             } else {
                 mostrarAlerta('danger', 'Erro: ' + data.message);
             }
