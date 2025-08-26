@@ -1578,7 +1578,7 @@ def api_consolidar_projecoes():
 @login_required
 def nova_transacao():
     """Adiciona nova transação (única ou recorrente)"""
-    form = TransacaoForm()
+    form = TransacaoForm(user_id=current_user.id)
     
     # Filtrar opções por usuário
     form.categoria_id.choices = []
@@ -1672,7 +1672,7 @@ def nova_transacao():
 def editar_transacao(transacao_id):
     """Edita uma transação existente"""
     transacao = Transacao.query.filter_by(id=transacao_id, user_id=current_user.id).first_or_404()
-    form = TransacaoForm(obj=transacao)
+    form = TransacaoForm(obj=transacao, user_id=current_user.id)
     
     # Configurar valores iniciais para campos específicos
     if request.method == 'GET':
@@ -2487,7 +2487,7 @@ def transacoes_recorrentes():
 @login_required
 def nova_transacao_recorrente():
     """Cria uma nova transação recorrente"""
-    form = TransacaoRecorrenteForm()
+    form = TransacaoRecorrenteForm(user_id=current_user.id)
     
     # Carregar opções filtradas por usuário
     categorias = Categoria.query.filter_by(user_id=current_user.id).all()
@@ -2547,7 +2547,7 @@ def nova_transacao_recorrente():
 def editar_transacao_recorrente(recorrente_id):
     """Edita uma transação recorrente"""
     recorrente = TransacaoRecorrente.query.filter_by(id=recorrente_id, user_id=current_user.id).first_or_404()
-    form = TransacaoRecorrenteForm(obj=recorrente)
+    form = TransacaoRecorrenteForm(obj=recorrente, user_id=current_user.id)
     
     # Carregar opções filtradas por usuário
     categorias = Categoria.query.filter_by(user_id=current_user.id).all()

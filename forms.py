@@ -43,7 +43,7 @@ class TransacaoForm(FlaskForm):
     is_parcelada = BooleanField('Transação Parcelada')
     total_parcelas = IntegerField('Número de Parcelas', validators=[Optional(), NumberRange(min=1)])
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user_id=None, **kwargs):
         super(TransacaoForm, self).__init__(*args, **kwargs)
         # Carregar categorias hierárquicas
         self.categoria_id.choices = []
@@ -75,7 +75,9 @@ class TransacaoForm(FlaskForm):
         # Forma de pagamento padrão: Dinheiro
         # Load payment method choices (global + user-specific)
         try:
-            formas = FormaPagamento.get_for_user(getattr(self, 'user_id', None) or None)
+            # Prefer passed user_id (from route), senão tentar atributo
+            uid = user_id or getattr(self, 'user_id', None) or None
+            formas = FormaPagamento.get_for_user(uid)
             self.forma_pagamento.choices = [(str(f.id), f.nome) for f in formas]
             if not self.forma_pagamento.data and self.forma_pagamento.choices:
                 self.forma_pagamento.data = self.forma_pagamento.choices[0][0]
@@ -178,7 +180,7 @@ class TransacaoRecorrenteForm(FlaskForm):
     is_parcelada = BooleanField('Transação Parcelada')
     total_parcelas = IntegerField('Total de Parcelas', validators=[Optional(), NumberRange(min=1)])
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user_id=None, **kwargs):
         super(TransacaoRecorrenteForm, self).__init__(*args, **kwargs)
         # Carregar categorias hierárquicas
         self.categoria_id.choices = []
@@ -204,7 +206,8 @@ class TransacaoRecorrenteForm(FlaskForm):
         self.conta_id.choices = [(conta.id, conta.nome) for conta in contas_ativas]
         # Default forma de pagamento
         try:
-            formas = FormaPagamento.get_for_user(getattr(self, 'user_id', None) or None)
+            uid = user_id or getattr(self, 'user_id', None) or None
+            formas = FormaPagamento.get_for_user(uid)
             self.forma_pagamento.choices = [(str(f.id), f.nome) for f in formas]
             if not self.forma_pagamento.data and self.forma_pagamento.choices:
                 self.forma_pagamento.data = self.forma_pagamento.choices[0][0]
