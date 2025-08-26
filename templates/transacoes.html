@@ -400,12 +400,19 @@ function excluirTransacao(transacaoId, descricao, isRecorrente, clickedButton=nu
         .catch(error => {
             console.error('Erro:', error);
             mostrarAlerta('danger', 'Erro ao excluir transação');
+        })
+        .finally(() => {
+            // Garantir restauração do botão caso ainda exista e esteja marcado como processando
             if (clickedButton) {
                 try {
-                    clickedButton.innerHTML = clickedButton.dataset._origHtml || '<i class="fas fa-trash"></i>';
-                    clickedButton.disabled = false;
-                    clickedButton.dataset.processing = '0';
-                } catch (e) {}
+                    if (clickedButton.dataset.processing === '1') {
+                        clickedButton.innerHTML = clickedButton.dataset._origHtml || '<i class="fas fa-trash"></i>';
+                        clickedButton.disabled = false;
+                        clickedButton.dataset.processing = '0';
+                    }
+                } catch (e) {
+                    // ignore
+                }
             }
         });
     }
