@@ -51,6 +51,14 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db.init_app(app)
 
+# Register admin_payment blueprint if available (safe import)
+try:
+    from app.routes.admin_payment import admin_payment_bp
+    app.register_blueprint(admin_payment_bp)
+except Exception:
+    # blueprint registration may fail in some environments; ignore to avoid startup crash
+    pass
+
 # Configuração da sessão para durar mais tempo
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
 app.config['SESSION_TYPE'] = 'filesystem'
