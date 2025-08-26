@@ -230,10 +230,11 @@ function excluirTransacao(transacaoId, descricao) {
             }
         })
         .then(response => response.json())
-        .then(data => {
+                .then(data => {
             if (data.success) {
                 alert(data.message);
-                window.location.href = '{{ url_for("transacoes") }}';
+                // Redirecionar para transacoes com deleted_id para feedback
+                window.location.href = '{{ url_for("transacoes") }}?deleted_id=' + transacaoId;
             } else {
                 alert('Erro: ' + data.message);
             }

@@ -1683,8 +1683,9 @@ def editar_transacao(transacao_id):
             
             db.session.commit()
             flash('Transação atualizada com sucesso!', 'success')
-            # Redirecionar de volta para a página de edição para forçar refresh
-            return redirect(url_for('editar_transacao', transacao_id=transacao.id))
+            # Redirecionar de volta para a lista de transações para que a tela seja recarregada
+            # e o usuário veja imediatamente a alteração; incluir updated_id para destaque
+            return redirect(url_for('transacoes', updated_id=transacao.id))
             
         except Exception as e:
             db.session.rollback()

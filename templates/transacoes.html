@@ -51,7 +51,7 @@
                     </thead>
                     <tbody>
                         {% for transacao in transacoes %}
-                        <tr class="{{ 'table-light' if transacao.is_projetada }}">
+                        <tr id="transacao-{{ transacao.id }}" class="{{ 'table-light' if transacao.is_projetada }}">
                             <td>
                                 {% if transacao.is_projetada %}
                                 <!-- Transação projetada -->
@@ -353,6 +353,29 @@ function changePerPage(perPage) {
 
 // Quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
+    // Se houver parametro updated_id na URL, destacar a linha correspondente
+    const urlParams = new URLSearchParams(window.location.search);
+    const updatedId = urlParams.get('updated_id');
+    if (updatedId) {
+        const row = document.getElementById('transacao-' + updatedId);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.classList.add('table-primary');
+            setTimeout(() => row.classList.remove('table-primary'), 3000);
+        }
+    }
+    const deletedId = urlParams.get('deleted_id');
+    if (deletedId) {
+        // Mostrar alerta informando que a transação foi excluída
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-warning alert-dismissible fade show';
+        alertDiv.innerHTML = `Transação excluída com sucesso. <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        document.querySelector('.container-fluid').prepend(alertDiv);
+        // Remover o parâmetro da URL sem recarregar
+        urlParams.delete('deleted_id');
+        const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+        window.history.replaceState({}, document.title, newUrl);
+    }
 });
 </script>
 
