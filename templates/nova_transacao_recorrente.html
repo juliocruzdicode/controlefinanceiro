@@ -50,7 +50,12 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         {{ form.categoria_id.label(class="form-label") }}
-                        {{ form.categoria_id(class="form-select") }}
+                        <div class="input-group">
+                            {{ form.categoria_id(class="form-select" + (" is-invalid" if form.categoria_id.errors else "")) }}
+                            <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#modalNovaCategoria" title="Criar Nova Categoria">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
                         {% if form.categoria_id.errors %}
                             <div class="text-danger small">
                                 {% for error in form.categoria_id.errors %}{{ error }}{% endfor %}
@@ -174,5 +179,166 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleRecorrenciaOptions();
     toggleParcelas();
 });
+</script>
+
+<!-- Modal Nova Categoria -->
+<div class="modal fade" id="modalNovaCategoria" tabindex="-1" aria-labelledby="modalNovaCategoriaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNovaCategoriaLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Nova Categoria
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovaCategoria">
+                    <div class="mb-3">
+                        <label for="categoriaPai" class="form-label">Categoria Pai (opcional)</label>
+                        <select class="form-select" id="categoriaPai">
+                            <option value="">Nenhuma (Categoria Raiz)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nomeCategoria" class="form-label">Nome da Categoria</label>
+                        <input type="text" class="form-control" id="nomeCategoria" required maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label for="descricaoCategoria" class="form-label">Descrição (opcional)</label>
+                        <textarea class="form-control" id="descricaoCategoria" rows="3" maxlength="200"></textarea>
+                    </div>
+                    <div id="alertCategoria" class="alert" style="display: none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="criarCategoria()">
+                    <i class="fas fa-save me-1"></i>Criar Categoria
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função para criar nova categoria
+function criarCategoria() {
+    const nome = document.getElementById('nomeCategoria').value.trim();
+    const descricao = document.getElementById('descricaoCategoria').value.trim();
+    const categoriaPai = document.getElementById('categoriaPai').value;
+    const alertElement = document.getElementById('alertCategoria');
+    
+    if (!nome) {
+        showAlert('alertCategoria', 'Nome da categoria é obrigatório!', 'danger');
+        return;
+    }
+    
+    // Limpar alertas anteriores
+    alertElement.style.display = 'none';
+    const dados = { nome: nome, descricao: descricao };
+    if (categoriaPai) dados.parent_id = parseInt(categoriaPai);
+
+    fetch('/api/categoria/nova', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify(dados)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const categoriaSelect = document.querySelector('select[name="categoria_id"]');
+            const nomeCompleto = data.categoria.nome_completo || data.categoria.nome;
+            const newOption = new Option(nomeCompleto, data.categoria.id);
+            categoriaSelect.add(newOption);
+            categoriaSelect.value = data.categoria.id;
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaCategoria'));
+            modal.hide();
+            document.getElementById('formNovaCategoria').reset();
+            showToast('Categoria criada com sucesso!', 'success');
+        } else {
+            showAlert('alertCategoria', data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showAlert('alertCategoria', 'Erro ao criar categoria. Tente novamente.', 'danger');
+    });
+}
+
+// Função para mostrar alertas nos modais
+function showAlert(elementId, message, type) {
+    const alertElement = document.getElementById(elementId);
+    alertElement.className = `alert alert-${type}`;
+    alertElement.textContent = message;
+    alertElement.style.display = 'block';
+}
+
+// Função para mostrar toast de sucesso
+function showToast(message, type) {
+    const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    toast.addEventListener('hidden.bs.toast', () => { toast.remove(); });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Event listeners para limpar alertas quando os modais são fechados
+document.getElementById('modalNovaCategoria').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('alertCategoria').style.display = 'none';
+    document.getElementById('formNovaCategoria').reset();
+});
+
+// Event listener para carregar categorias quando o modal de categoria for aberto
+document.getElementById('modalNovaCategoria').addEventListener('show.bs.modal', function () {
+    carregarCategoriasPai();
+});
+
+function carregarCategoriasPai() {
+    const selectCategoriaPai = document.getElementById('categoriaPai');
+    fetch('/api/categorias-arvore')
+        .then(response => response.json())
+        .then(categorias => {
+            selectCategoriaPai.innerHTML = '<option value="">Nenhuma (Categoria Raiz)</option>';
+            categorias.forEach(categoria => {
+                adicionarCategoriaOption(selectCategoriaPai, categoria, 0);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar categorias:', error);
+        });
+}
+
+function adicionarCategoriaOption(select, categoria, nivel) {
+    const indentacao = '  '.repeat(nivel) + (nivel > 0 ? '└─ ' : '');
+    const option = document.createElement('option');
+    option.value = categoria.id;
+    option.textContent = indentacao + categoria.nome;
+    select.appendChild(option);
+    if (categoria.subcategorias && categoria.subcategorias.length > 0) {
+        categoria.subcategorias.forEach(subcategoria => {
+            adicionarCategoriaOption(select, subcategoria, nivel + 1);
+        });
+    }
+}
 </script>
 {% endblock %}
