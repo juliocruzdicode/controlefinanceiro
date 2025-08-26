@@ -632,7 +632,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const id = this.dataset.id;
             const desc = this.dataset.desc || '';
             const recorrente = this.dataset.recorrente === '1';
-            excluirTransacao(id, desc, recorrente);
+            excluirTransacao(id, desc, recorrente, this);
         });
     });
 });

@@ -124,9 +124,11 @@
                                     {% endif %}
                                     
                                     {% if not transacao.is_projetada %}
-                                    <button type="button" class="btn btn-outline-danger" 
+                                    <button type="button" class="btn btn-outline-danger btn-delete-transacao" 
                                             title="{% if transacao.is_recorrente %}Excluir esta transação (a recorrência continuará){% else %}Excluir{% endif %}"
-                                            onclick="excluirTransacao({{ transacao.id }}, '{{ transacao.descricao|replace("'", "\\'") }}', {{ 'true' if transacao.is_recorrente else 'false' }})">
+                                            data-transacao-id="{{ transacao.id }}"
+                                            data-transacao-desc="{{ transacao.descricao|e }}"
+                                            data-transacao-recorrente="{{ '1' if transacao.is_recorrente else '0' }}">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                     {% endif %}
@@ -312,7 +314,7 @@ function mostrarAlerta(tipo, mensagem) {
     }, 5000);
 }
 
-function excluirTransacao(transacaoId, descricao, isRecorrente) {
+function excluirTransacao(transacaoId, descricao, isRecorrente, clickedButton=null) {
     let mensagem = `Tem certeza que deseja excluir a transação "${descricao}"?`;
     
     if (isRecorrente) {
@@ -320,6 +322,18 @@ function excluirTransacao(transacaoId, descricao, isRecorrente) {
     }
     
     if (confirm(mensagem)) {
+        // If a button was provided, show spinner and mark processing
+        if (clickedButton) {
+            try {
+                clickedButton.dataset._origHtml = clickedButton.innerHTML;
+                clickedButton.dataset.processing = '1';
+                clickedButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                clickedButton.disabled = true;
+            } catch (e) {
+                // ignore
+            }
+        }
+
         fetch(`/api/transacao/${transacaoId}`, {
             method: 'DELETE',
             headers: {
@@ -332,17 +346,22 @@ function excluirTransacao(transacaoId, descricao, isRecorrente) {
                 // Mostrar mensagem de sucesso
                 mostrarAlerta('success', data.message);
 
-                // Identificar tipo (antes de remover a linha)
-                const row = document.getElementById('transacao-' + transacaoId);
+                // Identificar e remover a linha da tabela (antes de atualizar contadores)
+                let row = null;
                 let wasReceita = false;
                 let wasDespesa = false;
+                if (clickedButton) {
+                    row = clickedButton.closest('tr');
+                }
+                if (!row) {
+                    row = document.getElementById('transacao-' + transacaoId);
+                }
                 if (row) {
                     const valorStrong = row.querySelector('td .text-success, td .text-danger');
                     if (valorStrong) {
                         wasReceita = valorStrong.classList.contains('text-success');
                         wasDespesa = valorStrong.classList.contains('text-danger');
                     }
-                    // Remover linha da tabela imediatamente
                     row.remove();
                 }
 
@@ -368,11 +387,26 @@ function excluirTransacao(transacaoId, descricao, isRecorrente) {
 
             } else {
                 mostrarAlerta('danger', 'Erro: ' + data.message);
+                // Restore button if present
+                if (clickedButton) {
+                    try {
+                        clickedButton.innerHTML = clickedButton.dataset._origHtml || '<i class="fas fa-trash"></i>';
+                        clickedButton.disabled = false;
+                        clickedButton.dataset.processing = '0';
+                    } catch (e) {}
+                }
             }
         })
         .catch(error => {
             console.error('Erro:', error);
             mostrarAlerta('danger', 'Erro ao excluir transação');
+            if (clickedButton) {
+                try {
+                    clickedButton.innerHTML = clickedButton.dataset._origHtml || '<i class="fas fa-trash"></i>';
+                    clickedButton.disabled = false;
+                    clickedButton.dataset.processing = '0';
+                } catch (e) {}
+            }
         });
     }
 }
@@ -386,6 +420,18 @@ function changePerPage(perPage) {
 
 // Quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
+    // Delegated click handler for delete buttons: works for static and dynamic rows
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-delete-transacao');
+        if (!btn) return;
+        e.preventDefault();
+        // Prevent double invocation if already processing
+        if (btn.dataset.processing === '1') return;
+        const id = btn.dataset.transacaoId;
+        const desc = btn.dataset.transacaoDesc || '';
+        const recorrente = btn.dataset.transacaoRecorrente === '1';
+        excluirTransacao(id, desc, recorrente, btn);
+    });
     // Se houver parametro updated_id na URL, destacar a linha correspondente
     const urlParams = new URLSearchParams(window.location.search);
     const updatedId = urlParams.get('updated_id');
