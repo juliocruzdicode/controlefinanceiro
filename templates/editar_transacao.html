@@ -20,7 +20,7 @@
                 {% endif %}
             </div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" id="formEditarTransacao">
                     {{ form.hidden_tag() }}
                     
                     <div class="mb-3">
@@ -254,12 +254,20 @@ window.addEventListener('DOMContentLoaded', function() {
     // Carregar tags disponíveis
     loadTagSuggestions();
     setupTagInput();
-    // Spinner no botão salvar
+    // Spinner no envio do formulário: mostrar apenas quando o formulário realmente for submetido
+    const formEditar = document.getElementById('formEditarTransacao');
     const btnSalvar = document.getElementById('btnSalvar');
-    if (btnSalvar) {
-        btnSalvar.addEventListener('click', function() {
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Salvando...';
-            this.disabled = true;
+    if (formEditar && btnSalvar) {
+        formEditar.addEventListener('submit', function() {
+            btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Salvando...';
+            btnSalvar.disabled = true;
+            // Safety: se após 10s não houver resposta (ex: falha de rede), reabilita o botão
+            setTimeout(() => {
+                if (btnSalvar.disabled) {
+                    btnSalvar.disabled = false;
+                    btnSalvar.innerHTML = '<i class="fas fa-save me-2"></i>Salvar Alterações';
+                }
+            }, 10000);
         });
     }
 });
