@@ -32,6 +32,15 @@ class StatusRecorrencia(Enum):
     PAUSADA = "pausada"       # Temporariamente pausada
     FINALIZADA = "finalizada" # Concluída ou cancelada
 
+
+class TipoFormaPagamento(Enum):
+    DINHEIRO = "dinheiro"
+    CARTAO = "cartao"
+    PIX = "pix"
+    TRANSFERENCIA = "transferencia"
+    BOLETO = "boleto"
+    OUTROS = "outros"
+
 # Tabela de associação entre Transações e Tags (muitos-para-muitos)
 transacao_tags = db.Table('transacao_tags',
     db.Column('transacao_id', db.Integer, db.ForeignKey('transacao.id'), primary_key=True),
@@ -285,6 +294,8 @@ class TransacaoRecorrente(db.Model):
     # Controle de parcelas (para transações parceladas)
     total_parcelas = db.Column(db.Integer, nullable=True)  # Null = contínua (sem fim)
     parcelas_geradas = db.Column(db.Integer, default=0)
+    # Forma de pagamento padrão para a recorrência (opcional)
+    forma_pagamento = db.Column(db.Enum(TipoFormaPagamento), nullable=True)
     
     # Relacionamentos
     categoria_id = db.Column(db.Integer, db.ForeignKey('categoria.id'), nullable=False)
@@ -370,6 +381,7 @@ class TransacaoRecorrente(db.Model):
             data_transacao=proxima_data,
             categoria_id=self.categoria_id,
             conta_id=self.conta_id,
+            forma_pagamento=self.forma_pagamento,
             recorrencia_id=self.id,
             user_id=self.user_id  # Adicionando o user_id
         )
@@ -512,6 +524,7 @@ class TransacaoRecorrente(db.Model):
                     tipo=self.tipo,
                     data_transacao=proxima_data,
                     categoria_id=self.categoria_id,
+                    forma_pagamento=self.forma_pagamento,
                     conta_id=self.conta_id,
                     recorrencia_id=self.id,
                     user_id=self.user_id
@@ -562,6 +575,7 @@ class TransacaoRecorrente(db.Model):
             'categoria_cor': self.categoria.cor,
             'conta': self.conta.nome,
             'conta_cor': self.conta.cor,
+            'forma_pagamento': self.forma_pagamento.value if self.forma_pagamento else None,
             'transacoes_count': len(self.transacoes)
         }
 
@@ -578,6 +592,8 @@ class Transacao(db.Model):
     conta_id = db.Column(db.Integer, db.ForeignKey('conta.id'), nullable=False)
     recorrencia_id = db.Column(db.Integer, db.ForeignKey('transacao_recorrente.id'), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    # Forma de pagamento utilizada nesta transação (opcional)
+    forma_pagamento = db.Column(db.Enum(TipoFormaPagamento), nullable=True)
     
     # Flag para indicar se a transação é uma projeção (não está no banco ainda)
     # Este atributo é calculado dinamicamente e não salvo no banco
@@ -637,6 +653,7 @@ class Transacao(db.Model):
             'categoria_cor': self.categoria.cor,
             'conta': self.conta.nome,
             'conta_cor': self.conta.cor,
+            'forma_pagamento': self.forma_pagamento.value if self.forma_pagamento else None,
             'is_recorrente': self.is_recorrente,
             'recorrencia_id': self.recorrencia_id,
             'tags': self.tags_nomes,

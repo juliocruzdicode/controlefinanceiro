@@ -45,6 +45,15 @@
                         </div>
                     {% endif %}
                 </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.forma_pagamento.label(class="form-label") }}
+                    {{ form.forma_pagamento(class="form-select") }}
+                    {% if form.forma_pagamento.errors %}
+                        <div class="text-danger small">
+                            {% for error in form.forma_pagamento.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
                 
                 <div class="col-md-6 mb-3">
                     {{ form.categoria_id.label(class="form-label") }}
@@ -105,7 +114,7 @@
                             </small>
                         </div>
                         
-                        <div id="parcelas-input" style="display: {{ 'block' if recorrente.is_parcelada else 'none' }};">
+                        <div id="parcelas-input" class="{{ 'd-block' if recorrente.is_parcelada else 'd-none' }}">
                             {{ form.total_parcelas.label(class="form-label") }}
                             {{ form.total_parcelas(class="form-control", min="1") }}
                             {% if form.total_parcelas.errors %}

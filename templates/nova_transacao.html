@@ -97,6 +97,17 @@
                                 {% endif %}
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.forma_pagamento.label(class="form-label") }}
+                                {{ form.forma_pagamento(class="form-select" + (" is-invalid" if form.forma_pagamento.errors else "")) }}
+                                {% if form.forma_pagamento.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.forma_pagamento.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Campo de Tags -->
