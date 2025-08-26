@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Nova Forma de Pagamento{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Nova Forma de Pagamento</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" name="nome" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Slug (identificador único)</label>
+            <input type="text" name="slug" class="form-control" required>
+        </div>
+        <button class="btn btn-primary">Criar</button>
+        <a href="{{ url_for('admin_payment.listar_formas_pagamento') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

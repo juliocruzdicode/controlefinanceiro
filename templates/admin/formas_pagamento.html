@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Formas de Pagamento - Administração{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Formas de Pagamento</h2>
+    <a href="{{ url_for('admin_payment.nova_forma_pagamento') }}" class="btn btn-primary mb-3">Nova Forma</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Slug</th>
+                <th>Usuário</th>
+                <th>Ativa</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in formas %}
+            <tr>
+                <td>{{ f.id }}</td>
+                <td>{{ f.nome }}</td>
+                <td>{{ f.slug }}</td>
+                <td>{% if f.user_id %}#{{ f.user_id }}{% else %}Global{% endif %}</td>
+                <td>{% if f.ativa %}Sim{% else %}Não{% endif %}</td>
+                <td>
+                    <a href="{{ url_for('admin_payment.editar_forma_pagamento', forma_id=f.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                    <form method="POST" action="{{ url_for('admin_payment.excluir_forma_pagamento', forma_id=f.id) }}" style="display:inline" onsubmit="return confirm('Confirma exclusão?')">
+                        <button class="btn btn-sm btn-outline-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

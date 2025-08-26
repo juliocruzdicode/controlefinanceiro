@@ -49,6 +49,7 @@ def create_app(config_class='config.Config'):
     from app.routes.categories import categories_bp
     from app.routes.accounts import accounts_bp
     from app.routes.admin import admin_bp
+    from app.routes.admin_payment import admin_payment_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -56,6 +57,7 @@ def create_app(config_class='config.Config'):
     app.register_blueprint(categories_bp)
     app.register_blueprint(accounts_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_payment_bp)
     
     # Carregar o modelo de usuário
     from app.models.user import Usuario

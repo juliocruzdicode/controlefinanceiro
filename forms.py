@@ -3,6 +3,7 @@ from wtforms import StringField, FloatField, SelectField, DateField, TextAreaFie
 from wtforms.validators import DataRequired, NumberRange, Optional, Email, EqualTo, Length, ValidationError
 import re
 from datetime import datetime
+from models import FormaPagamento
 
 class TransacaoForm(FlaskForm):
     descricao = StringField('Descrição', validators=[DataRequired()])
@@ -12,12 +13,7 @@ class TransacaoForm(FlaskForm):
         ('despesa', 'Despesa')
     ], validators=[DataRequired()])
     forma_pagamento = SelectField('Forma de Pagamento', choices=[
-        ('dinheiro', 'Dinheiro'),
-        ('cartao', 'Cartão'),
-        ('pix', 'PIX'),
-        ('transferencia', 'Transferência'),
-        ('boleto', 'Boleto'),
-        ('outros', 'Outros')
+    # choices will be populated dynamically in __init__
     ], validators=[Optional()])
     categoria_id = SelectField('Categoria', coerce=int, validators=[DataRequired()])
     conta_id = SelectField('Conta', coerce=int, validators=[DataRequired()])
@@ -77,8 +73,22 @@ class TransacaoForm(FlaskForm):
             # Por padrão, considerar Despesa
             self.tipo.data = 'despesa'
         # Forma de pagamento padrão: Dinheiro
-        if not self.forma_pagamento.data:
-            self.forma_pagamento.data = 'dinheiro'
+        # Load payment method choices (global + user-specific)
+        try:
+            formas = FormaPagamento.get_for_user(getattr(self, 'user_id', None) or None)
+            self.forma_pagamento.choices = [(str(f.id), f.nome) for f in formas]
+            if not self.forma_pagamento.data and self.forma_pagamento.choices:
+                self.forma_pagamento.data = self.forma_pagamento.choices[0][0]
+        except Exception:
+            # fallback to common choices
+            self.forma_pagamento.choices = [
+                ('dinheiro', 'Dinheiro'),
+                ('cartao', 'Cartão'),
+                ('pix', 'PIX'),
+                ('transferencia', 'Transferência'),
+                ('boleto', 'Boleto'),
+                ('outros', 'Outros')
+            ]
         # Para formulários que podem marcar recorrência, deixar frequência padrão mensal
         if not self.tipo_recorrencia.data:
             self.tipo_recorrencia.data = 'mensal'
@@ -145,12 +155,7 @@ class TransacaoRecorrenteForm(FlaskForm):
         ('despesa', 'Despesa')
     ], validators=[DataRequired()])
     forma_pagamento = SelectField('Forma de Pagamento', choices=[
-        ('dinheiro', 'Dinheiro'),
-        ('cartao', 'Cartão'),
-        ('pix', 'PIX'),
-        ('transferencia', 'Transferência'),
-        ('boleto', 'Boleto'),
-        ('outros', 'Outros')
+    # populated in __init__
     ], validators=[Optional()])
     categoria_id = SelectField('Categoria', coerce=int, validators=[DataRequired()])
     conta_id = SelectField('Conta', coerce=int, validators=[DataRequired()])
@@ -198,8 +203,20 @@ class TransacaoRecorrenteForm(FlaskForm):
         contas_ativas = Conta.get_contas_ativas()
         self.conta_id.choices = [(conta.id, conta.nome) for conta in contas_ativas]
         # Default forma de pagamento
-        if not self.forma_pagamento.data:
-            self.forma_pagamento.data = 'dinheiro'
+        try:
+            formas = FormaPagamento.get_for_user(getattr(self, 'user_id', None) or None)
+            self.forma_pagamento.choices = [(str(f.id), f.nome) for f in formas]
+            if not self.forma_pagamento.data and self.forma_pagamento.choices:
+                self.forma_pagamento.data = self.forma_pagamento.choices[0][0]
+        except Exception:
+            self.forma_pagamento.choices = [
+                ('dinheiro', 'Dinheiro'),
+                ('cartao', 'Cartão'),
+                ('pix', 'PIX'),
+                ('transferencia', 'Transferência'),
+                ('boleto', 'Boleto'),
+                ('outros', 'Outros')
+            ]
     
     def validate(self, extra_validators=None):
         if not super().validate(extra_validators):

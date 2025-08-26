@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Forma de Pagamento{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Editar Forma de Pagamento</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" name="nome" class="form-control" value="{{ forma.nome }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Slug</label>
+            <input type="text" name="slug" class="form-control" value="{{ forma.slug }}" required>
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" name="ativa" id="ativa" class="form-check-input" {% if forma.ativa %}checked{% endif %}>
+            <label for="ativa" class="form-check-label">Ativa</label>
+        </div>
+        <button class="btn btn-primary">Salvar</button>
+        <a href="{{ url_for('admin_payment.listar_formas_pagamento') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail, Message
 from urllib.parse import urlparse as url_parse
-from models import db, Transacao, Categoria, TipoTransacao, TransacaoRecorrente, TipoRecorrencia, StatusRecorrencia, Conta, TipoConta, Tag, Usuario, Tema, TipoFormaPagamento
+from models import db, Transacao, Categoria, TipoTransacao, TransacaoRecorrente, TipoRecorrencia, StatusRecorrencia, Conta, TipoConta, Tag, Usuario, Tema, FormaPagamento
 from forms import TransacaoForm, CategoriaForm, TransacaoRecorrenteForm, ContaForm, LoginForm, MFAForm, BackupCodeForm, SetupMFAForm, RegisterForm, ChangePasswordForm, ForgotPasswordForm, ResetPasswordForm, TemaForm, UserThemeForm, CompletarCadastroForm
 from config import Config
 from datetime import datetime, timedelta
@@ -58,8 +58,8 @@ app.config['SESSION_TYPE'] = 'filesystem'
 # Centralizar configuração do horizonte de projeções (meses)
 # MESES_FUTUROS_DEFAULT: valor padrão usado quando não fornecido via request
 # MESES_FUTUROS_MAX: limite máximo permitido
-app.config.setdefault('MESES_FUTUROS_DEFAULT', 36)
-app.config.setdefault('MESES_FUTUROS_MAX', 60)
+app.config.setdefault('MESES_FUTUROS_DEFAULT', 24)
+app.config.setdefault('MESES_FUTUROS_MAX', 36)
 
 
 def obter_meses_futuros_from_request(param_name: str = 'meses', default: int | None = None) -> int:
@@ -1424,7 +1424,7 @@ def confirmar_transacao():
         descricao=descricao_final,
         valor=recorrencia.valor,
         tipo=recorrencia.tipo,
-    forma_pagamento=recorrencia.forma_pagamento,
+    forma_pagamento_id=recorrencia.forma_pagamento_id,
         data_transacao=data,
         categoria_id=recorrencia.categoria_id,
         conta_id=recorrencia.conta_id,
@@ -1514,7 +1514,7 @@ def api_consolidar_projecoes():
                 descricao=recorrencia.descricao,
                 valor=recorrencia.valor,
                 tipo=recorrencia.tipo,
-                forma_pagamento=recorrencia.forma_pagamento,
+                forma_pagamento_id=recorrencia.forma_pagamento_id,
                 data_transacao=data,
                 categoria_id=recorrencia.categoria_id,
                 conta_id=recorrencia.conta_id,
@@ -1602,7 +1602,7 @@ def nova_transacao():
                     tipo_recorrencia=TipoRecorrencia(form.tipo_recorrencia.data),
                     data_inicio=form.data_transacao.data,
                     data_fim=form.data_fim.data,
-                    forma_pagamento=TipoFormaPagamento(form.forma_pagamento.data) if form.forma_pagamento.data else None,
+                    forma_pagamento_id=int(form.forma_pagamento.data) if form.forma_pagamento.data else None,
                     categoria_id=form.categoria_id.data,
                     conta_id=form.conta_id.data,
                     total_parcelas=form.total_parcelas.data if form.is_parcelada.data else None,
@@ -1636,7 +1636,7 @@ def nova_transacao():
                     descricao=form.descricao.data,
                     valor=form.valor.data,
                     tipo=TipoTransacao(form.tipo.data),
-                    forma_pagamento=TipoFormaPagamento(form.forma_pagamento.data) if form.forma_pagamento.data else None,
+                    forma_pagamento_id=int(form.forma_pagamento.data) if form.forma_pagamento.data else None,
                     categoria_id=form.categoria_id.data,
                     conta_id=form.conta_id.data,
                     data_transacao=form.data_transacao.data,
@@ -1691,7 +1691,7 @@ def editar_transacao(transacao_id):
             transacao.descricao = form.descricao.data
             transacao.valor = form.valor.data
             transacao.tipo = TipoTransacao(form.tipo.data)
-            transacao.forma_pagamento = TipoFormaPagamento(form.forma_pagamento.data) if form.forma_pagamento.data else None
+            transacao.forma_pagamento_id = int(form.forma_pagamento.data) if form.forma_pagamento.data else None
             transacao.categoria_id = form.categoria_id.data
             transacao.conta_id = form.conta_id.data
             transacao.data_transacao = form.data_transacao.data
@@ -2498,13 +2498,13 @@ def nova_transacao_recorrente():
                 tipo_recorrencia=TipoRecorrencia(form.tipo_recorrencia.data),
                 data_inicio=form.data_inicio.data,
                 data_fim=form.data_fim.data,
-                forma_pagamento=TipoFormaPagamento(form.forma_pagamento.data) if form.forma_pagamento.data else None,
+                forma_pagamento_id=int(form.forma_pagamento.data) if form.forma_pagamento.data else None,
                 categoria_id=form.categoria_id.data,
                 conta_id=form.conta_id.data,
                 total_parcelas=form.total_parcelas.data if form.is_parcelada.data else None,
                 user_id=current_user.id
             )
-            
+
             db.session.add(recorrente)
             db.session.commit()
             
@@ -2562,7 +2562,7 @@ def editar_transacao_recorrente(recorrente_id):
             recorrente.tipo_recorrencia = TipoRecorrencia(form.tipo_recorrencia.data)
             recorrente.data_inicio = form.data_inicio.data
             recorrente.data_fim = form.data_fim.data
-            recorrente.forma_pagamento = TipoFormaPagamento(form.forma_pagamento.data) if form.forma_pagamento.data else None
+            recorrente.forma_pagamento_id = int(form.forma_pagamento.data) if form.forma_pagamento.data else None
             recorrente.categoria_id = form.categoria_id.data
             recorrente.conta_id = form.conta_id.data
             recorrente.total_parcelas = form.total_parcelas.data if form.is_parcelada.data else None
@@ -2712,7 +2712,7 @@ def projetar_transacoes_futuras():
                         'valor': transacao_existente.valor,
                         'tipo': transacao_existente.tipo.value,
                         'data': transacao_existente.data_transacao.strftime('%Y-%m-%d'),
-                        'forma_pagamento': transacao_existente.forma_pagamento.value if transacao_existente.forma_pagamento else None,
+                        'forma_pagamento': transacao_existente.forma_pagamento.nome if transacao_existente.forma_pagamento else None,
                         'categoria': transacao_existente.categoria.nome,
                         'categoria_cor': transacao_existente.categoria.cor,
                         'conta': transacao_existente.conta.nome,
@@ -2734,7 +2734,7 @@ def projetar_transacoes_futuras():
                             'categoria_cor': recorrente.categoria.cor,
                             'conta': recorrente.conta.nome,
                             'conta_cor': recorrente.conta.cor,
-                            'forma_pagamento': recorrente.forma_pagamento.value if recorrente.forma_pagamento else None,
+                            'forma_pagamento': recorrente.forma_pagamento.nome if recorrente.forma_pagamento else None,
                             'recorrencia_id': recorrente.id,
                             'status': 'projetada'
                         })
