@@ -224,6 +224,11 @@ function toggleRecorrencia() {
     
     if (isRecorrente) {
         opcoesRecorrencia.style.display = 'block';
+        // Se não houver frequência selecionada, padronizar para mensal para melhor UX
+        const tipoFreq = document.querySelector('select[name="tipo_recorrencia"]');
+        if (tipoFreq && !tipoFreq.value) {
+            tipoFreq.value = 'mensal';
+        }
     } else {
         opcoesRecorrencia.style.display = 'none';
         // Reset campos
@@ -248,6 +253,10 @@ function toggleParcelas() {
 // Aplicar configurações iniciais
 window.addEventListener('DOMContentLoaded', function() {
     const select = document.getElementById('tipoSelect');
+    // Garantir que o tipo default seja Despesa (melhor correspondência com UX esperado)
+    if (select && !select.value) {
+        select.value = 'despesa';
+    }
     select.dispatchEvent(new Event('change'));
     
     toggleRecorrencia();

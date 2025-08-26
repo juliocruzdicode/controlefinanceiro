@@ -64,6 +64,13 @@ class TransacaoForm(FlaskForm):
         # Carregar contas ativas
         contas_ativas = Conta.get_contas_ativas()
         self.conta_id.choices = [(conta.id, conta.nome) for conta in contas_ativas]
+        # Defaults
+        if not self.tipo.data:
+            # Por padrão, considerar Despesa
+            self.tipo.data = 'despesa'
+        # Para formulários que podem marcar recorrência, deixar frequência padrão mensal
+        if not self.tipo_recorrencia.data:
+            self.tipo_recorrencia.data = 'mensal'
     
     def validate(self, extra_validators=None):
         if not super().validate(extra_validators):
