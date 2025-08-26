@@ -26,10 +26,14 @@
                 <td>{% if f.user_id %}#{{ f.user_id }}{% else %}Global{% endif %}</td>
                 <td>{% if f.ativa %}Sim{% else %}Não{% endif %}</td>
                 <td>
-                    <a href="{{ url_for('admin_payment.editar_forma_pagamento', forma_id=f.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-                    <form method="POST" action="{{ url_for('admin_payment.excluir_forma_pagamento', forma_id=f.id) }}" style="display:inline" onsubmit="return confirm('Confirma exclusão?')">
-                        <button class="btn btn-sm btn-outline-danger">Excluir</button>
-                    </form>
+                    {% if current_user.is_admin or (f.user_id and f.user_id == current_user.id) %}
+                        <a href="{{ url_for('admin_payment.editar_forma_pagamento', forma_id=f.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                        <form method="POST" action="{{ url_for('admin_payment.excluir_forma_pagamento', forma_id=f.id) }}" style="display:inline" onsubmit="return confirm('Confirma exclusão?')">
+                            <button class="btn btn-sm btn-outline-danger">Excluir</button>
+                        </form>
+                    {% else %}
+                        -
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

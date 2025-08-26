@@ -10,6 +10,7 @@ from app import db
 from app.models.user import Usuario
 from app.services.category_service import CategoriaService
 from app.services.account_service import ContaService
+from app.services.payment_service import PaymentService
 
 class UsuarioService:
     """
@@ -41,6 +42,12 @@ class UsuarioService:
         # Cria categorias e contas padrão
         CategoriaService.criar_categorias_padrao(usuario.id)
         ContaService.criar_contas_padrao(usuario.id)
+        # Seed formas de pagamento padrão para o novo usuário
+        try:
+            PaymentService.seed_default_for_user(usuario.id)
+        except Exception:
+            # Não falhar a criação do usuário se o seed de pagamento falhar
+            pass
         
         return usuario
     
