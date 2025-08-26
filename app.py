@@ -1698,12 +1698,10 @@ def excluir_transacao(transacao_id):
     try:
         transacao = Transacao.query.filter_by(id=transacao_id, user_id=current_user.id).first_or_404()
         
-        # Verificar se é uma transação recorrente
-        if transacao.is_recorrente and transacao.recorrencia:
-            return jsonify({
-                'success': False,
-                'message': 'Esta transação faz parte de uma recorrência. Para excluí-la, gerencie a recorrência em "Transações Recorrentes".'
-            }), 400
+    # Permitir exclusão de transações recorrentes individuais.
+    # Antes bloqueávamos a exclusão por padrão, mas agora o usuário pode remover
+    # uma instância consolidada se desejar. A recorrência (se existir) permanece
+    # e continuará gerando futuras transações.
         
         descricao = transacao.descricao
         db.session.delete(transacao)

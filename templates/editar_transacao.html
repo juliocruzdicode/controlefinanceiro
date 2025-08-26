@@ -181,11 +181,12 @@
                         <a href="{{ url_for('transacoes') }}" class="btn btn-secondary">
                             <i class="fas fa-times me-2"></i>Cancelar
                         </a>
-                        {% if not transacao.is_recorrente %}
-                        <button type="button" class="btn btn-outline-danger ms-auto" onclick="excluirTransacao({{ transacao.id }}, '{{ transacao.descricao }}')">
+                        <button type="button" class="btn btn-outline-danger ms-auto btn-excluir-transacao"
+                                data-id="{{ transacao.id }}"
+                                data-desc="{{ transacao.descricao|e }}"
+                                data-recorrente="{{ '1' if transacao.is_recorrente else '0' }}">
                             <i class="fas fa-trash me-2"></i>Excluir Transação
                         </button>
-                        {% endif %}
                     </div>
                 </form>
             </div>
@@ -210,7 +211,18 @@ document.getElementById('tipoSelect').addEventListener('change', function() {
 
 // Função para excluir transação
 function excluirTransacao(transacaoId, descricao) {
-    if (confirm(`Tem certeza que deseja excluir a transação "${descricao}"?`)) {
+    // Backward-compatible signature: if isRecorrente omitted, assume false
+    let isRecorrente = false;
+    if (arguments.length > 2) {
+        isRecorrente = arguments[2] === true || arguments[2] === 'true' || arguments[2] === 1 || arguments[2] === '1';
+    }
+
+    let mensagem = `Tem certeza que deseja excluir a transação "${descricao}"?`;
+    if (isRecorrente) {
+        mensagem += "\n\nAviso: Esta transação pertence a uma recorrência. Excluir aqui remove apenas esta instância; a recorrência continuará gerando futuras transações.";
+    }
+
+    if (confirm(mensagem)) {
         fetch(`/api/transacao/${transacaoId}`, {
             method: 'DELETE',
             headers: {
@@ -594,6 +606,18 @@ function createToastContainer() {
 document.getElementById('modalNovaCategoria').addEventListener('hidden.bs.modal', function () {
     document.getElementById('alertCategoria').style.display = 'none';
     document.getElementById('formNovaCategoria').reset();
+});
+
+// Attach click handler for delete buttons that use data-attributes (to avoid inline onclick quoting)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-excluir-transacao').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const desc = this.dataset.desc || '';
+            const recorrente = this.dataset.recorrente === '1';
+            excluirTransacao(id, desc, recorrente);
+        });
+    });
 });
 
 // Event listener para carregar categorias quando o modal de categoria for aberto
