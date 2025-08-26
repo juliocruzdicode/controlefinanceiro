@@ -51,7 +51,7 @@
                     <div class="mb-3">
                         {{ form.categoria_id.label(class="form-label") }}
                         <div class="input-group">
-                            {{ form.categoria_id(class="form-select" + (" is-invalid" if form.categoria_id.errors else "")) }}
+                            {{ form.categoria_id(class="form-select" + (" is-invalid" if form.categoria_id.errors else ""), id='categoriaSelectRec', **{'data-selected': form.categoria_id.data or ''}) }}
                             <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#modalNovaCategoria" title="Criar Nova Categoria">
                                 <i class="fas fa-plus"></i>
                             </button>
@@ -178,6 +178,8 @@ function toggleParcelas() {
 document.addEventListener('DOMContentLoaded', function() {
     toggleRecorrenciaOptions();
     toggleParcelas();
+    // Carregar categorias no select principal com hierarquia visual
+    carregarCategoriasPrincipal();
 });
 </script>
 
@@ -337,6 +339,39 @@ function adicionarCategoriaOption(select, categoria, nivel) {
     if (categoria.subcategorias && categoria.subcategorias.length > 0) {
         categoria.subcategorias.forEach(subcategoria => {
             adicionarCategoriaOption(select, subcategoria, nivel + 1);
+        });
+    }
+}
+
+// Carregar categorias para o select principal da página e renderizar indentação
+function carregarCategoriasPrincipal() {
+    const select = document.getElementById('categoriaSelectRec');
+    if (!select) return;
+    const selectedId = select.getAttribute('data-selected') || '';
+
+    fetch('/api/categorias-arvore')
+        .then(response => response.json())
+        .then(categorias => {
+            select.innerHTML = '';
+            categorias.forEach(categoria => {
+                adicionarCategoriaOptionMain(select, categoria, 0);
+            });
+            if (selectedId) select.value = selectedId;
+        })
+        .catch(err => console.error('Erro ao carregar categorias (principal):', err));
+}
+
+function adicionarCategoriaOptionMain(select, categoria, nivel) {
+    // Usar non-breaking spaces para prevenir colapso de múltiplos espaços
+    const nbsp = '\u00A0';
+    const indent = nbsp.repeat(nivel * 4) + (nivel > 0 ? '└─' + nbsp : '');
+    const option = document.createElement('option');
+    option.value = categoria.id;
+    option.textContent = indent + categoria.nome;
+    select.appendChild(option);
+    if (categoria.subcategorias && categoria.subcategorias.length > 0) {
+        categoria.subcategorias.forEach(subcategoria => {
+            adicionarCategoriaOptionMain(select, subcategoria, nivel + 1);
         });
     }
 }
