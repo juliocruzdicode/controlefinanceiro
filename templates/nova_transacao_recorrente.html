@@ -25,7 +25,7 @@
                     {{ form.valor.label(class="form-label") }}
                     <div class="input-group">
                         <span class="input-group-text">R$</span>
-                        {{ form.valor(class="form-control", step="0.01") }}
+                        {{ form.valor(class="form-control", type="text", step="0.01") }}
                     </div>
                     {% if form.valor.errors %}
                         <div class="text-danger small">
