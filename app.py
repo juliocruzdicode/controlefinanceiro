@@ -8,6 +8,7 @@ from config import Config
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, or_
+from sqlalchemy.exc import ProgrammingError, OperationalError
 import qrcode
 import io
 import base64
@@ -989,45 +990,57 @@ def landing():
 @login_required
 def dashboard():
     """Dashboard principal com resumo financeiro"""
-    # Calculando totais - filtrar por usuário
-    receitas_total = db.session.query(func.sum(Transacao.valor)).filter(
-        Transacao.tipo == TipoTransacao.RECEITA,
-        Transacao.user_id == current_user.id
-    ).scalar() or 0
-    
-    despesas_total = db.session.query(func.sum(Transacao.valor)).filter(
-        Transacao.tipo == TipoTransacao.DESPESA,
-        Transacao.user_id == current_user.id
-    ).scalar() or 0
-    
-    saldo = receitas_total - despesas_total
-    
-    # Últimas transações - filtrar por usuário
-    transacoes_recentes = Transacao.query.filter_by(user_id=current_user.id).order_by(
-        Transacao.data_transacao.desc()
-    ).limit(5).all()
-    
-    # Dados do mês atual - filtrar por usuário
-    inicio_mes = datetime.now().replace(day=1)
-    receitas_mes = db.session.query(func.sum(Transacao.valor)).filter(
-        Transacao.tipo == TipoTransacao.RECEITA,
-        Transacao.data_transacao >= inicio_mes,
-        Transacao.user_id == current_user.id
-    ).scalar() or 0
-    
-    despesas_mes = db.session.query(func.sum(Transacao.valor)).filter(
-        Transacao.tipo == TipoTransacao.DESPESA,
-        Transacao.data_transacao >= inicio_mes,
-        Transacao.user_id == current_user.id
-    ).scalar() or 0
-    
-    return render_template('dashboard.html',
-                         receitas_total=receitas_total,
-                         despesas_total=despesas_total,
-                         saldo=saldo,
-                         receitas_mes=receitas_mes,
-                         despesas_mes=despesas_mes,
-                         transacoes_recentes=transacoes_recentes)
+    try:
+        # Calculando totais - filtrar por usuário
+        receitas_total = db.session.query(func.sum(Transacao.valor)).filter(
+            Transacao.tipo == TipoTransacao.RECEITA,
+            Transacao.user_id == current_user.id
+        ).scalar() or 0
+        
+        despesas_total = db.session.query(func.sum(Transacao.valor)).filter(
+            Transacao.tipo == TipoTransacao.DESPESA,
+            Transacao.user_id == current_user.id
+        ).scalar() or 0
+        
+        saldo = receitas_total - despesas_total
+        
+        # Últimas transações - filtrar por usuário
+        transacoes_recentes = Transacao.query.filter_by(user_id=current_user.id).order_by(
+            Transacao.data_transacao.desc()
+        ).limit(5).all()
+        
+        # Dados do mês atual - filtrar por usuário
+        inicio_mes = datetime.now().replace(day=1)
+        receitas_mes = db.session.query(func.sum(Transacao.valor)).filter(
+            Transacao.tipo == TipoTransacao.RECEITA,
+            Transacao.data_transacao >= inicio_mes,
+            Transacao.user_id == current_user.id
+        ).scalar() or 0
+        
+        despesas_mes = db.session.query(func.sum(Transacao.valor)).filter(
+            Transacao.tipo == TipoTransacao.DESPESA,
+            Transacao.data_transacao >= inicio_mes,
+            Transacao.user_id == current_user.id
+        ).scalar() or 0
+        
+        return render_template('dashboard.html',
+                             receitas_total=receitas_total,
+                             despesas_total=despesas_total,
+                             saldo=saldo,
+                             receitas_mes=receitas_mes,
+                             despesas_mes=despesas_mes,
+                             transacoes_recentes=transacoes_recentes)
+    except (ProgrammingError, OperationalError) as e:
+        # DB schema mismatch (e.g. missing coluna forma_pagamento) - show degraded dashboard
+        print(f"DB SCHEMA ERROR in dashboard: {e}")
+        flash('Erro no banco de dados: coluna ausente. Execute a migração de esquema (veja logs).', 'danger')
+        return render_template('dashboard.html',
+                             receitas_total=0,
+                             despesas_total=0,
+                             saldo=0,
+                             receitas_mes=0,
+                             despesas_mes=0,
+                             transacoes_recentes=[])
 
 @app.route('/transacoes')
 @login_required
