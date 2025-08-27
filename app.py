@@ -2169,6 +2169,49 @@ def relatorios():
     except Exception as e:
         print('DEBUG RELATORIO ERROR:', e)
 
+    # Preparar linhas por transação para a tabela detalhada
+    # Agrupar informação de categoria raiz / subcategoria para exibição
+    categorias_map = {c.id: c for c in todas_categorias}
+    transacoes_linhas = []
+    for t in sorted(transacoes, key=lambda x: (x.data_transacao, getattr(x, 'descricao', '') )):
+        # Month label compatível com lista `meses` (ex: 'Jan 2025')
+        try:
+            month_label = f"{meses_pt[t.data_transacao.month-1]} {t.data_transacao.year}"
+        except Exception:
+            month_label = ''
+
+        # Categoria e subcategoria
+        cat = categorias_map.get(t.categoria_id) or (Categoria.query.get(t.categoria_id) if t.categoria_id else None)
+        subcategoria_nome = ''
+        categoria_raiz_nome = ''
+        try:
+            if cat:
+                # subcategoria = categoria se tiver parent
+                if cat.parent_id:
+                    subcategoria_nome = cat.nome
+                    # buscar raiz
+                    raiz = cat
+                    while raiz and raiz.parent_id:
+                        raiz = categorias_map.get(raiz.parent_id) or Categoria.query.get(raiz.parent_id)
+                    categoria_raiz_nome = raiz.nome if raiz else ''
+                else:
+                    categoria_raiz_nome = cat.nome
+                    subcategoria_nome = ''
+        except Exception:
+            categoria_raiz_nome = getattr(cat, 'nome', '') if cat else ''
+
+        transacoes_linhas.append({
+            'id': getattr(t, 'id', None),
+            'descricao': getattr(t, 'descricao', ''),
+            'valor': getattr(t, 'valor', 0),
+            'tipo': getattr(t, 'tipo', None).value if getattr(t, 'tipo', None) else None,
+            'data_transacao': getattr(t, 'data_transacao', None),
+            'month_label': month_label,
+            'categoria_raiz': categoria_raiz_nome,
+            'subcategoria': subcategoria_nome,
+            'is_projetada': getattr(t, 'is_projetada', False)
+        })
+
     # Garantir que valores usados no template para seleção sejam strings (ou vazio)
     categoria_for_template = str(categoria_id) if categoria_id is not None else ''
     conta_for_template = str(conta_id) if conta_id is not None else ''
@@ -2191,7 +2234,8 @@ def relatorios():
                          categorias_despesas=categorias_despesas,
                          categorias_sub_receitas=categorias_sub_receitas,
                          categorias_sub_despesas=categorias_sub_despesas,
-                         matriz_dados=matriz_dados)
+                         matriz_dados=matriz_dados,
+                         transacoes_linhas=transacoes_linhas)
 
 @app.route('/api/dados-grafico')
 @login_required

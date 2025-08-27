@@ -118,7 +118,9 @@
                     <table class="table table-sm table-bordered mb-0" id="relatorioTable">
                         <thead class="table-dark">
                             <tr>
-                                <th class="sticky-left" style="min-width: 200px;">Categoria</th>
+                                <th class="sticky-left" style="min-width: 220px;">Descrição</th>
+                                <th style="min-width: 200px;">Categoria</th>
+                                <th style="min-width: 180px;">Subcategoria</th>
                                 {% for mes in meses %}
                                 <th class="text-center" style="min-width: 120px;">{{ mes }}</th>
                                 {% endfor %}
@@ -126,94 +128,116 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% if tipo == 'todos' or tipo == 'receita' %}
-                            <!-- Receitas -->
-                            <tr class="table-success fw-bold">
-                                <td class="sticky-left"><i class="fas fa-plus-circle"></i> RECEITAS</td>
-                                {% for mes in meses %}
-                                <td class="text-end">R$ {{ "%.2f"|format(totais_mensais[mes]['receita']|float) }}</td>
+                            {# Novo: renderizar linhas por transação se disponível #}
+                            {% if transacoes_linhas is defined and transacoes_linhas %}
+                                {% for t in transacoes_linhas %}
+                                <tr {% if t.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
+                                    <td class="sticky-left ps-3">{{ t.descricao or '-' }}</td>
+                                    <td>{{ t.categoria_raiz or '-' }}</td>
+                                    <td>{{ t.subcategoria or '-' }}</td>
+                                    {% for mes in meses %}
+                                    <td class="text-end">
+                                        {% if mes == t.month_label %}
+                                            R$ {{ "%.2f"|format(t.valor|float) }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-end">R$ {{ "%.2f"|format(t.valor|float) }}</td>
+                                </tr>
                                 {% endfor %}
-                                <td class="text-end bg-success text-white">R$ {{ "%.2f"|format(total_receitas|float) }}</td>
-                            </tr>
-                            
-                            {% for categoria in categorias_receitas %}
-                            <tr>
-                                <td class="sticky-left ps-3">{{ categoria.nome_completo }}</td>
-                                {% for mes in meses %}
-                                <td class="text-end">
-                                    {% set valor = matriz_dados.get(categoria.id, {}).get(mes, 0) %}
-                                    {% if valor %}
-                                    R$ {{ "%.2f"|format(valor|float) }}
-                                    {% else %}
-                                    <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
+                            {% else %}
+                                {# Fallback: manter agregados por categoria como antes #}
+                                {% if tipo == 'todos' or tipo == 'receita' %}
+                                <!-- Receitas -->
+                                <tr class="table-success fw-bold">
+                                    <td class="sticky-left"><i class="fas fa-plus-circle"></i> RECEITAS</td>
+                                    {% for mes in meses %}
+                                    <td class="text-end">R$ {{ "%.2f"|format(totais_mensais[mes]['receita']|float) }}</td>
+                                    {% endfor %}
+                                    <td class="text-end bg-success text-white">R$ {{ "%.2f"|format(total_receitas|float) }}</td>
+                                </tr>
+                                
+                                {% for categoria in categorias_receitas %}
+                                <tr>
+                                    <td class="sticky-left ps-3">{{ categoria.nome_completo }}</td>
+                                    {% for mes in meses %}
+                                    <td class="text-end">
+                                        {% set valor = matriz_dados.get(categoria.id, {}).get(mes, 0) %}
+                                        {% if valor %}
+                                        R$ {{ "%.2f"|format(valor|float) }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-end">
+                                        {% set total_cat = categoria.total_receita or 0 %}
+                                        {% if total_cat %}
+                                        R$ {{ "%.2f"|format(total_cat|float) }}
+                                        {% else %}
+                                        <span class="text-muted">R$ 0,00</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
                                 {% endfor %}
-                                <td class="text-end">
-                                    {% set total_cat = categoria.total_receita or 0 %}
-                                    {% if total_cat %}
-                                    R$ {{ "%.2f"|format(total_cat|float) }}
-                                    {% else %}
-                                    <span class="text-muted">R$ 0,00</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
 
-                            <!-- Espaçador -->
-                            <tr><td colspan="{{ meses|length + 2 }}" class="p-1"></td></tr>
-                            {% endif %}
+                                <!-- Espaçador -->
+                                <tr><td colspan="{{ meses|length + 3 }}" class="p-1"></td></tr>
+                                {% endif %}
 
-                            {% if tipo == 'todos' or tipo == 'despesa' %}
-                            <!-- Despesas -->
-                            <tr class="table-danger fw-bold">
-                                <td class="sticky-left"><i class="fas fa-minus-circle"></i> DESPESAS</td>
-                                {% for mes in meses %}
-                                <td class="text-end">R$ {{ "%.2f"|format(totais_mensais[mes]['despesa']|float) }}</td>
+                                {% if tipo == 'todos' or tipo == 'despesa' %}
+                                <!-- Despesas -->
+                                <tr class="table-danger fw-bold">
+                                    <td class="sticky-left"><i class="fas fa-minus-circle"></i> DESPESAS</td>
+                                    {% for mes in meses %}
+                                    <td class="text-end">R$ {{ "%.2f"|format(totais_mensais[mes]['despesa']|float) }}</td>
+                                    {% endfor %}
+                                    <td class="text-end bg-danger text-white">R$ {{ "%.2f"|format(total_despesas|float) }}</td>
+                                </tr>
+
+                                {% for categoria in categorias_despesas %}
+                                <tr>
+                                    <td class="sticky-left ps-3">{{ categoria.nome_completo }}</td>
+                                    {% for mes in meses %}
+                                    <td class="text-end">
+                                        {% set valor = matriz_dados.get(categoria.id, {}).get(mes, 0) %}
+                                        {% if valor %}
+                                        R$ {{ "%.2f"|format(valor|float) }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-end">
+                                        {% set total_cat = categoria.total_despesa or 0 %}
+                                        {% if total_cat %}
+                                        R$ {{ "%.2f"|format(total_cat|float) }}
+                                        {% else %}
+                                        <span class="text-muted">R$ 0,00</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
                                 {% endfor %}
-                                <td class="text-end bg-danger text-white">R$ {{ "%.2f"|format(total_despesas|float) }}</td>
-                            </tr>
 
-                            {% for categoria in categorias_despesas %}
-                            <tr>
-                                <td class="sticky-left ps-3">{{ categoria.nome_completo }}</td>
-                                {% for mes in meses %}
-                                <td class="text-end">
-                                    {% set valor = matriz_dados.get(categoria.id, {}).get(mes, 0) %}
-                                    {% if valor %}
-                                    R$ {{ "%.2f"|format(valor|float) }}
-                                    {% else %}
-                                    <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                                {% endfor %}
-                                <td class="text-end">
-                                    {% set total_cat = categoria.total_despesa or 0 %}
-                                    {% if total_cat %}
-                                    R$ {{ "%.2f"|format(total_cat|float) }}
-                                    {% else %}
-                                    <span class="text-muted">R$ 0,00</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
+                                <!-- Espaçador -->
+                                <tr><td colspan="{{ meses|length + 3 }}" class="p-1"></td></tr>
+                                {% endif %}
 
-                            <!-- Espaçador -->
-                            <tr><td colspan="{{ meses|length + 2 }}" class="p-1"></td></tr>
-                            {% endif %}
-
-                            {% if tipo == 'todos' %}
-                            <!-- SALDO MENSAL -->
-                            <tr class="table-info fw-bold">
-                                <td class="sticky-left"><i class="fas fa-equals"></i> SALDO MENSAL</td>
-                                {% for mes in meses %}
-                                {% set saldo_mes = (totais_mensais[mes]['receita']|float) - (totais_mensais[mes]['despesa']|float) %}
-                                <td class="text-end {% if saldo_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                    R$ {{ "%.2f"|format(saldo_mes) }}
-                                </td>
-                                {% endfor %}
-                                <td class="text-end bg-info text-white">R$ {{ "%.2f"|format(saldo_geral|float) }}</td>
-                            </tr>
+                                {% if tipo == 'todos' %}
+                                <!-- SALDO MENSAL -->
+                                <tr class="table-info fw-bold">
+                                    <td class="sticky-left"><i class="fas fa-equals"></i> SALDO MENSAL</td>
+                                    {% for mes in meses %}
+                                    {% set saldo_mes = (totais_mensais[mes]['receita']|float) - (totais_mensais[mes]['despesa']|float) %}
+                                    <td class="text-end {% if saldo_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        R$ {{ "%.2f"|format(saldo_mes) }}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-end bg-info text-white">R$ {{ "%.2f"|format(saldo_geral|float) }}</td>
+                                </tr>
+                                {% endif %}
                             {% endif %}
                         </tbody>
                     </table>
