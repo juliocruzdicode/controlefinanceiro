@@ -486,6 +486,11 @@ class TransacaoRecorrente(db.Model):
         else:
             proxima_data = self.data_inicio
             print(f"Primeira transação, usando data_inicio: {proxima_data}")
+
+        # Guard: se a recorrência for UNICA e já tiver transação, nada mais a gerar
+        if self.tipo_recorrencia == TipoRecorrencia.UNICA and self.transacoes:
+            print(f"Recorrência UNICA já gerada para {self.id}, nada a projetar")
+            return transacoes_geradas
         
         # Loop de geração de transações
         max_iteracoes = 1000  # Limitar o número de iterações como segurança
@@ -539,6 +544,10 @@ class TransacaoRecorrente(db.Model):
                         if t.recorrencia_id == self.id and t.data_transacao < proxima_data
                     ])
                     numero_parcela = total_existentes + 1
+                    # Se já ultrapassamos o total de parcelas previstas, parar a geração
+                    if self.total_parcelas is not None and numero_parcela > self.total_parcelas:
+                        print(f"Número da parcela ({numero_parcela}) excede total_parcelas ({self.total_parcelas}), encerrando geração de projeções")
+                        break
                 descricao_proj = self.descricao
                 if self.is_parcelada and numero_parcela is not None:
                     descricao_proj += f" - Parcela {numero_parcela}/{self.total_parcelas}"
