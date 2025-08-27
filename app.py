@@ -2172,7 +2172,7 @@ def relatorios():
     # Preparar linhas por transação para a tabela detalhada
     # Agrupar informação de categoria raiz / subcategoria para exibição
     categorias_map = {c.id: c for c in todas_categorias}
-    # Agrupar transações por (descrição, categoria_raiz, subcategoria) e somar por mês
+    # Agrupar transações por (descrição normalizada, categoria_raiz, subcategoria) e somar por mês
     grupos = {}
     for t in transacoes:
         # Month label compatível com lista `meses` (ex: 'Jan 2025')
@@ -2198,34 +2198,57 @@ def relatorios():
         except Exception:
             categoria_raiz_nome = getattr(cat, 'nome', '') if cat else ''
 
-        chave = ( (getattr(t, 'descricao', '') or '').strip(), categoria_raiz_nome or '', subcategoria_nome or '' )
+        # Normalizar descrição para agrupar independentemente de caixa/espacos
+        raw_desc = (getattr(t, 'descricao', '') or '').strip()
+        norm_desc = ' '.join(raw_desc.split()).lower()
+
+        chave = (norm_desc, categoria_raiz_nome or '', subcategoria_nome or '')
 
         if chave not in grupos:
             # inicializar mapa mensal com zeros para todos os meses
             monthly = {m: 0 for m in meses}
             grupos[chave] = {
-                'descricao': chave[0],
-                'categoria_raiz': chave[1],
-                'subcategoria': chave[2],
+                # descrição exibida: preferir a versão não projetada quando disponível
+                'descricao': raw_desc,
+                'categoria_raiz': categoria_raiz_nome or '',
+                'subcategoria': subcategoria_nome or '',
                 'monthly': monthly,
                 'total': 0,
                 'is_projetada': getattr(t, 'is_projetada', False)
             }
+            # coletar variantes originais para fallback
+            grupos[chave].setdefault('_orig_variants', [])
+
+        # registrar variante original (para preservar capitalização quando não houver consolidada)
+        if raw_desc and raw_desc not in grupos[chave].get('_orig_variants', []):
+            grupos[chave]['_orig_variants'].append(raw_desc)
 
         # somar valor no mês correto (se o mês estiver dentro do período)
         if month_label and month_label in grupos[chave]['monthly']:
             grupos[chave]['monthly'][month_label] += t.valor
             grupos[chave]['total'] += t.valor
         else:
-            # valores fora do período somem para o total geral (mas ainda acumularíamos se necessário)
+            # valores fora do período somam para o total geral
             grupos[chave]['total'] += t.valor
 
-        # qualquer transação projetada marca o grupo como projetado
+        # se encontrarmos uma transação real (não projetada), preferi-la como label exibido
+        if not getattr(t, 'is_projetada', False):
+            grupos[chave]['descricao'] = raw_desc
+
+        # qualquer transação projetada marca o grupo como projetado (mas não cria nova linha)
         if getattr(t, 'is_projetada', False):
             grupos[chave]['is_projetada'] = True
 
-    # Converter para lista ordenada por descrição
-    transacoes_linhas = sorted(list(grupos.values()), key=lambda g: (g['descricao'] or '').lower())
+    # Preparar lista final: usar a variante original mais legível como descrição exibida
+    for g in grupos.values():
+        if (not g.get('descricao')) and g.get('_orig_variants'):
+            g['descricao'] = g['_orig_variants'][0]
+        # remover campo auxiliar antes de enviar ao template
+        if '_orig_variants' in g:
+            del g['_orig_variants']
+
+    # Converter para lista ordenada por descrição (caso-insensitivo)
+    transacoes_linhas = sorted(list(grupos.values()), key=lambda g: (g.get('descricao') or '').lower())
 
     # Garantir que valores usados no template para seleção sejam strings (ou vazio)
     categoria_for_template = str(categoria_id) if categoria_id is not None else ''
