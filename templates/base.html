@@ -178,20 +178,33 @@
                             <i class="fas fa-calendar-alt me-1"></i>Recorrentes
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('categorias') }}">
-                            <i class="fas fa-folder me-1"></i>Categorias
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <!-- ícone pedido (desenho) - usando gear as placeholder -->
+                            <i class="fas fa-gear me-1"></i>Cadastros
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('tags') }}">
-                            <i class="fas fa-tags me-1"></i>Tags
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('contas') }}">
-                            <i class="fas fa-university me-1"></i>Contas
-                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('categorias') }}">
+                                    <i class="fas fa-folder me-2"></i>Categorias
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('tags') }}">
+                                    <i class="fas fa-tags me-2"></i>Tags
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('contas') }}">
+                                    <i class="fas fa-university me-2"></i>Contas
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('admin_payment.listar_formas_pagamento') }}">
+                                    <i class="fas fa-credit-card me-2"></i>Formas de Pagamento
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('relatorios') }}">
@@ -214,11 +227,6 @@
                                     <i class="fas fa-palette me-2"></i>Gerenciar Temas
                                 </a>
                             </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ url_for('admin_payment.listar_formas_pagamento') }}">
-                                        <i class="fas fa-credit-card me-2"></i>Formas de Pagamento
-                                    </a>
-                                </li>
                         </ul>
                     </li>
                     {% endif %}
@@ -248,11 +256,6 @@
                                 <li>
                                     <a class="dropdown-item" href="{{ url_for('change_password') }}">
                                         <i class="fas fa-key me-2"></i>Alterar Senha
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ url_for('admin_payment.listar_formas_pagamento') }}">
-                                        <i class="fas fa-credit-card me-2"></i>Formas de Pagamento
                                     </a>
                                 </li>
                                 {% if not current_user.mfa_enabled %}
