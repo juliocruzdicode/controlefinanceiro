@@ -1958,7 +1958,11 @@ def relatorios():
         ano = int(ano)
     except Exception:
         ano = datetime.now().year
-    transacoes = [t for t in transacoes if t.data_transacao.year == ano]
+
+    # Filtrar transações para o intervalo selecionado (periodo_inicio..periodo_fim)
+    # Antes era filtrado apenas pelo ano, o que incluía meses fora do intervalo quando
+    # o usuário aplicava um filtro de data mais específico.
+    transacoes = [t for t in transacoes if t.data_transacao >= periodo_inicio and t.data_transacao <= periodo_fim]
     
     # Gerar lista de meses baseada no período (rótulos em PT)
     meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
