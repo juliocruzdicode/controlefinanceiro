@@ -2321,38 +2321,62 @@ def api_comparar_contas_ano():
         else:
             contas = Conta.query.filter_by(user_id=current_user.id).all()
 
-        # Fetch transactions for the year
+        # Fetch and aggregate transactions for the year using SQL (group by conta, month, tipo)
         periodo_inicio = datetime(year, 1, 1)
         periodo_fim = datetime(year, 12, 31, 23, 59, 59)
-        transacoes = Transacao.query.filter(
+
+        # Use strftime to extract month (works on SQLite). For other DBs this may need adjustment.
+        registros = db.session.query(
+            Transacao.conta_id,
+            func.strftime('%m', Transacao.data_transacao).label('mes'),
+            Transacao.tipo,
+            func.sum(Transacao.valor).label('valor')
+        ).filter(
             Transacao.user_id == current_user.id,
             Transacao.data_transacao >= periodo_inicio,
             Transacao.data_transacao <= periodo_fim
-        ).all()
+        )
+        # apply optional conta filter
+        if contas_param and 'conta_ids' in locals():
+            registros = registros.filter(Transacao.conta_id.in_(conta_ids))
+
+        registros = registros.group_by(Transacao.conta_id, 'mes', Transacao.tipo).all()
 
         # Prepare months labels
         meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         months = [f"{meses_pt[m-1]} {year}" for m in range(1,13)]
 
-        # Group transactions by conta and month (net: receita +, despesa -)
+        # Build a mapping conta_id -> [12 months] with net values
+        conta_map = {c.id: { 'nome': c.nome, 'cor': getattr(c, 'cor', None), 'monthly': [0.0]*12 } for c in contas}
+
+        for reg in registros:
+            try:
+                cid = int(reg[0])
+                mes_idx = int(reg[1]) - 1
+                tipo = reg[2]
+                valor = float(reg[3] or 0)
+            except Exception:
+                # skip malformed rows
+                continue
+
+            if cid not in conta_map:
+                # possible if a filtered conta doesn't belong to user; skip
+                continue
+
+            if tipo == TipoTransacao.RECEITA:
+                conta_map[cid]['monthly'][mes_idx] += valor
+            else:
+                conta_map[cid]['monthly'][mes_idx] -= valor
+
         accounts_data = []
-        for conta in contas:
-            monthly = [0.0] * 12
-            for t in transacoes:
-                if t.conta_id != conta.id:
-                    continue
-                m = t.data_transacao.month - 1
-                if t.tipo == TipoTransacao.RECEITA:
-                    monthly[m] += t.valor
-                else:
-                    monthly[m] -= t.valor
-            total = sum(monthly)
+        for cid, info in conta_map.items():
+            total = sum(info['monthly'])
             accounts_data.append({
-                'id': conta.id,
-                'nome': conta.nome,
-                'cor': getattr(conta, 'cor', None),
-                'monthly': monthly,
-                'total': total
+                'id': cid,
+                'nome': info['nome'],
+                'cor': info.get('cor'),
+                'monthly': [round(v, 2) for v in info['monthly']],
+                'total': round(total, 2)
             })
 
         return jsonify({'success': True, 'year': year, 'months': months, 'accounts': accounts_data})

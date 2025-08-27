@@ -630,7 +630,8 @@ function exportarExcel() {
         return accounts.map((acc, i) => ({
             label: acc.nome,
             data: acc.monthly.map(v => Number((v||0).toFixed(2))),
-            backgroundColor: colors[i % colors.length],
+            backgroundColor: acc.cor || colors[i % colors.length],
+            borderColor: '#ffffff',
             borderWidth: 1
         }));
     }
@@ -647,7 +648,16 @@ function exportarExcel() {
         const data = await res.json();
 
         const labels = data.months || [{% for m in meses %}'{{ m }}'{% if not loop.last %}, {% endif %}{% endfor %}];
-        const datasets = buildDatasets(data.accounts || []);
+        const accounts = data.accounts || [];
+        // if no accounts selected and there are accounts, pre-select top 2 by absolute total
+        if(!selected.length && accounts.length){
+            const ordered = accounts.slice().sort((a,b) => Math.abs(b.total) - Math.abs(a.total));
+            const pre = ordered.slice(0, Math.min(2, ordered.length)).map(a => String(a.id));
+            // mark options selected
+            Array.from(contasSelect.options).forEach(opt => { opt.selected = pre.includes(opt.value); });
+        }
+
+        const datasets = buildDatasets(accounts);
 
         if(comparacaoChart) comparacaoChart.destroy();
         comparacaoChart = new Chart(ctxCompar, {
@@ -656,8 +666,25 @@ function exportarExcel() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => 'R$ ' + Number(ctx.parsed.y).toFixed(2) } } },
-                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => 'R$ ' + Number(v).toFixed(2) } } }
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        onClick: (e, legendItem, legend) => {
+                            // toggle dataset visibility
+                            const index = legendItem.datasetIndex;
+                            const ci = legend.chart;
+                            const meta = ci.getDatasetMeta(index);
+                            meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
+                            ci.update();
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+                        }
+                    }
+                },
+                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2}) } } }
             }
         });
     }
