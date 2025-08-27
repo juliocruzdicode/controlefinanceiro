@@ -144,7 +144,7 @@
                                         {% endif %}
                                     </td>
                                     {% endfor %}
-                                    <td class="text-end">R$ {{ "%.2f"|format(t.valor|float) }}</td>
+                                        <td class="text-end">R$ {{ "%.2f"|format(t.total) }}</td>
                                 </tr>
                                 {% endfor %}
                             {% else %}
@@ -172,14 +172,7 @@
                                         {% endif %}
                                     </td>
                                     {% endfor %}
-                                    <td class="text-end">
-                                        {% set total_cat = categoria.total_receita or 0 %}
-                                        {% if total_cat %}
-                                        R$ {{ "%.2f"|format(total_cat|float) }}
-                                        {% else %}
-                                        <span class="text-muted">R$ 0,00</span>
-                                        {% endif %}
-                                    </td>
+                                        <td class="text-end">{{ format_currency(categoria.total_receita) }}</td>
                                 </tr>
                                 {% endfor %}
 
