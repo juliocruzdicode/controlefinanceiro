@@ -2060,6 +2060,35 @@ def relatorios():
             raiz.total_despesa = total_despesa
             categorias_despesas.append(raiz)
 
+    # ----------------------
+    # Agregação por SUBCATEGORIAS
+    # ----------------------
+    categorias_sub_receitas = []
+    categorias_sub_despesas = []
+
+    categorias_sub = Categoria.query.filter(Categoria.user_id == current_user.id, Categoria.parent_id != None).order_by(Categoria.nome).all()
+    sub_descendentes = {}
+    for sub in categorias_sub:
+        descendentes = sub.get_all_subcategorias(include_self=True)
+        descendentes_ids = [c.id for c in descendentes]
+
+        # Respeitar filtro por categoria (se houver)
+        if filtro_categoria_ids is not None and not (set(descendentes_ids) & filtro_categoria_ids):
+            continue
+
+        sub_descendentes[sub.id] = set(descendentes_ids)
+
+        total_receita_sub = sum(t.valor for t in transacoes if t.categoria_id in sub_descendentes[sub.id] and t.tipo == TipoTransacao.RECEITA)
+        total_despesa_sub = sum(t.valor for t in transacoes if t.categoria_id in sub_descendentes[sub.id] and t.tipo == TipoTransacao.DESPESA)
+
+        if total_receita_sub > 0:
+            sub.total_receita = total_receita_sub
+            categorias_sub_receitas.append(sub)
+
+        if total_despesa_sub > 0:
+            sub.total_despesa = total_despesa_sub
+            categorias_sub_despesas.append(sub)
+
     # Criar matriz de dados (categoria raiz x mês) sem duplicidade, usando os conjuntos de descendentes
     matriz_dados = {}
     categorias_unicas = {c.id: c for c in (categorias_receitas + categorias_despesas)}
@@ -2109,6 +2138,8 @@ def relatorios():
                          total_transacoes=total_transacoes,
                          categorias_receitas=categorias_receitas,
                          categorias_despesas=categorias_despesas,
+                         categorias_sub_receitas=categorias_sub_receitas,
+                         categorias_sub_despesas=categorias_sub_despesas,
                          matriz_dados=matriz_dados)
 
 @app.route('/api/dados-grafico')

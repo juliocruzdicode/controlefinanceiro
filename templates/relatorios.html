@@ -237,6 +237,16 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Distribuição por Subcategoria ({% if tipo == 'receita' %}Receitas{% elif tipo == 'despesa' %}Despesas{% else %}Despesas{% endif %})</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="subcategoriasChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
                 <h5><i class="fas fa-chart-line"></i> Evolução Mensal</h5>
             </div>
             <div class="card-body">
@@ -333,6 +343,66 @@ new Chart(ctxCategorias, {
                     font: {
                         size: 11
                     }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const value = context.parsed;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return context.label + ': R$ ' + value.toFixed(2) + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Gráfico de pizza - Subcategorias (mesmas regras de filtro/forma)
+{% if tipo == 'despesa' or tipo == 'todos' %}
+const subcategoriasData = [
+    {% for categoria in categorias_sub_despesas %}
+    {
+        nome: "{{ categoria.nome_completo }}",
+        valor: {{ categoria.total_despesa or 0 }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+].filter(item => item.valor > 0);
+{% else %}
+const subcategoriasData = [
+    {% for categoria in categorias_sub_receitas %}
+    {
+        nome: "{{ categoria.nome_completo }}",
+        valor: {{ categoria.total_receita or 0 }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+].filter(item => item.valor > 0);
+{% endif %}
+
+const ctxSubcategorias = document.getElementById('subcategoriasChart').getContext('2d');
+new Chart(ctxSubcategorias, {
+    type: 'doughnut',
+    data: {
+        labels: subcategoriasData.map(item => item.nome),
+        datasets: [{
+            data: subcategoriasData.map(item => item.valor),
+            backgroundColor: [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
+                '#FF9FF3', '#54A0FF', '#5F27CD', '#26DE81', '#FD79A8',
+                '#F0932B', '#EB4D4B', '#6C5CE7', '#A29BFE', '#FD79A8'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    boxWidth: 12,
+                    font: { size: 11 }
                 }
             },
             tooltip: {
