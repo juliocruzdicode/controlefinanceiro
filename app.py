@@ -2016,63 +2016,57 @@ def relatorios():
     saldo_geral = total_receitas - total_despesas
     total_transacoes = len(vistos)
     
-    # Organizar categorias por tipo
+    # Organizar categorias por tipo (agregando por categorias primárias/raiz)
     categorias_receitas = []
     categorias_despesas = []
-    
-    # Obter categorias que têm transações no período filtrado
-    categorias_com_transacoes = db.session.query(
-        Categoria,
-        func.sum(Transacao.valor).label('total')
-    ).join(Transacao).filter(
-        extract('year', Transacao.data_transacao) == ano
-    )
-    
-    if tipo != 'todos':
-        categorias_com_transacoes = categorias_com_transacoes.filter(
-            Transacao.tipo == TipoTransacao(tipo)
-        )
-    
+
+    # Obter categorias raiz do usuário
+    categorias_raiz = Categoria.query.filter_by(parent_id=None, user_id=current_user.id).order_by(Categoria.nome).all()
+
+    # Se o usuário filtrou por uma categoria específica, obter seus ids (inclui subcategorias)
+    filtro_categoria_ids = None
     if categoria_id:
         categoria_selecionada = Categoria.query.get(categoria_id)
         if categoria_selecionada:
             subcategorias = categoria_selecionada.get_all_subcategorias(include_self=True)
-            categoria_ids = [cat.id for cat in subcategorias]
-            categorias_com_transacoes = categorias_com_transacoes.filter(
-                Transacao.categoria_id.in_(categoria_ids)
-            )
-    
-    # Aplicar filtro de conta nas categorias com transações
-    if conta_id:
-        categorias_com_transacoes = categorias_com_transacoes.filter(
-            Transacao.conta_id == conta_id
-        )
-    
-    categorias_com_transacoes = categorias_com_transacoes.group_by(Categoria).all()
-    
-    # Separar por tipo e calcular totais
-    for categoria, total in categorias_com_transacoes:
-        categoria_transacoes = [t for t in transacoes if t.categoria_id == categoria.id]
-        total_receita = sum(t.valor for t in categoria_transacoes if t.tipo == TipoTransacao.RECEITA)
-        total_despesa = sum(t.valor for t in categoria_transacoes if t.tipo == TipoTransacao.DESPESA)
-        
+            filtro_categoria_ids = set(cat.id for cat in subcategorias)
+
+    # Map of root_id -> list of descendant ids (including self)
+    raiz_descendentes = {}
+
+    for raiz in categorias_raiz:
+        descendentes = raiz.get_all_subcategorias(include_self=True)
+        descendentes_ids = [c.id for c in descendentes]
+
+        # Se houve filtro por categoria, pular raízes que não contêm a categoria filtrada
+        if filtro_categoria_ids is not None and not (set(descendentes_ids) & filtro_categoria_ids):
+            continue
+
+        raiz_descendentes[raiz.id] = set(descendentes_ids)
+
+        # Calcular totais a partir da lista de transações já filtrada (ano, conta, tipo, etc.)
+        total_receita = sum(t.valor for t in transacoes if t.categoria_id in raiz_descendentes[raiz.id] and t.tipo == TipoTransacao.RECEITA)
+        total_despesa = sum(t.valor for t in transacoes if t.categoria_id in raiz_descendentes[raiz.id] and t.tipo == TipoTransacao.DESPESA)
+
         if total_receita > 0:
-            categoria.total_receita = total_receita
-            categorias_receitas.append(categoria)
-        
+            raiz.total_receita = total_receita
+            categorias_receitas.append(raiz)
+
         if total_despesa > 0:
-            categoria.total_despesa = total_despesa
-            categorias_despesas.append(categoria)
-    
-    # Criar matriz de dados (categoria x mês) sem duplicidade
+            raiz.total_despesa = total_despesa
+            categorias_despesas.append(raiz)
+
+    # Criar matriz de dados (categoria raiz x mês) sem duplicidade, usando os conjuntos de descendentes
     matriz_dados = {}
-    for categoria in categorias_receitas + categorias_despesas:
+    categorias_unicas = {c.id: c for c in (categorias_receitas + categorias_despesas)}
+    for categoria_id_key, categoria in categorias_unicas.items():
         matriz_dados[categoria.id] = {}
+        descendentes_set = raiz_descendentes.get(categoria.id, {categoria.id})
         for idx, month_start in enumerate(month_starts):
             vistos = set()
             valor_mes = 0
             for t in transacoes:
-                if t.categoria_id != categoria.id or t.data_transacao.year != month_start.year or t.data_transacao.month != month_start.month:
+                if t.categoria_id not in descendentes_set or t.data_transacao.year != month_start.year or t.data_transacao.month != month_start.month:
                     continue
                 if t.recorrencia_id:
                     chave = (t.data_transacao.year, t.data_transacao.month, t.recorrencia_id)
