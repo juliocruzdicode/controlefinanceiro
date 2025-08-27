@@ -367,7 +367,7 @@ new Chart(ctxCategorias, {
 const subcategoriasData = [
     {% for categoria in categorias_sub_despesas %}
     {
-        nome: "{{ categoria.nome_completo }}",
+        nome: "{{ categoria.nome }}",
         valor: {{ categoria.total_despesa or 0 }}
     }{% if not loop.last %},{% endif %}
     {% endfor %}
@@ -376,7 +376,7 @@ const subcategoriasData = [
 const subcategoriasData = [
     {% for categoria in categorias_sub_receitas %}
     {
-        nome: "{{ categoria.nome_completo }}",
+        nome: "{{ categoria.nome }}",
         valor: {{ categoria.total_receita or 0 }}
     }{% if not loop.last %},{% endif %}
     {% endfor %}
