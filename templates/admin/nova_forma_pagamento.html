@@ -10,10 +10,7 @@
             <label class="form-label">Nome</label>
             <input type="text" name="nome" class="form-control" required>
         </div>
-        <div class="mb-3">
-            <label class="form-label">Slug (identificador único)</label>
-            <input type="text" name="slug" class="form-control" required>
-        </div>
+    <!-- Slug gerado automaticamente no servidor; não é necessário apresentar ao usuário -->
         {% if current_user.is_admin %}
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" value="1" id="global" name="global">

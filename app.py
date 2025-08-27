@@ -3612,25 +3612,20 @@ def nova_forma_api():
     try:
         data = request.get_json() or {}
         nome = (data.get('nome') or '').strip()
-        slug = (data.get('slug') or '').strip()
 
         if not nome:
             return jsonify({'success': False, 'message': 'Nome é obrigatório'}), 400
 
-        # Gerar slug se não fornecido
-        if not slug:
-            import re as _re
-            slug = _re.sub(r'[^a-z0-9]+', '_', nome.lower()).strip('_')
+        # Gerar slug amigável e garantir unicidade para o usuário
+        import re as _re
+        base = _re.sub(r'[^a-z0-9]+', '_', nome.lower()).strip('_')
+        candidate = f"{base}-u{current_user.id}"
+        i = 0
+        while FormaPagamento.query.filter_by(user_id=current_user.id, slug=candidate).first():
+            i += 1
+            candidate = f"{base}-u{current_user.id}_{i}"
 
-        # Sufixar slug com id de usuário para evitar colisões
-        slug_user = f"{slug}-u{current_user.id}"
-
-        # Verificar existência
-        exists = FormaPagamento.query.filter_by(user_id=current_user.id, slug=slug_user).first()
-        if exists:
-            return jsonify({'success': False, 'message': 'Já existe uma forma com este identificador para o seu usuário'}), 400
-
-        forma = FormaPagamento(nome=nome, slug=slug_user, user_id=current_user.id)
+        forma = FormaPagamento(nome=nome, slug=candidate, user_id=current_user.id)
         db.session.add(forma)
         db.session.commit()
 

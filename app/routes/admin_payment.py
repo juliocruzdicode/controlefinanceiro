@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from models import db, FormaPagamento
+import re
 
 admin_payment_bp = Blueprint('admin_payment', __name__)
 
@@ -22,16 +23,33 @@ def nova_forma_pagamento():
     # Qualquer usuário autenticado pode criar suas formas
     if request.method == 'POST':
         nome = request.form.get('nome')
-        slug = request.form.get('slug')
-        if not nome or not slug:
-            flash('Nome e slug são obrigatórios.', 'danger')
+        if not nome:
+            flash('Nome é obrigatório.', 'danger')
             return redirect(url_for('admin_payment.nova_forma_pagamento'))
         # Admins criam formas globais por padrão; usuários criam formas associadas a si mesmos
         if current_user.is_admin and request.form.get('global'):
             user_id = None
         else:
             user_id = current_user.id
-        f = FormaPagamento(nome=nome, slug=slug if user_id is None else f"{slug}-{current_user.id}", user_id=user_id)
+        # Gerar slug amigável automaticamente
+        base = re.sub(r'[^a-z0-9]+', '_', nome.lower()).strip('_')
+        if user_id is None:
+            candidate = base
+            # garantir unicidade entre slugs globais
+            i = 0
+            while FormaPagamento.query.filter_by(user_id=None, slug=candidate).first():
+                i += 1
+                candidate = f"{base}_{i}"
+            slug_final = candidate
+        else:
+            # para formas do usuário, sufixar com -u<id> e garantir unicidade
+            candidate = f"{base}-u{user_id}"
+            i = 0
+            while FormaPagamento.query.filter_by(user_id=user_id, slug=candidate).first():
+                i += 1
+                candidate = f"{base}-u{user_id}_{i}"
+            slug_final = candidate
+        f = FormaPagamento(nome=nome, slug=slug_final, user_id=user_id)
         db.session.add(f)
         db.session.commit()
         flash('Forma de pagamento criada.', 'success')
@@ -48,10 +66,26 @@ def editar_forma_pagamento(forma_id):
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
-        forma.nome = request.form.get('nome') or forma.nome
-        # Não permitir mudar slug de forma global via usuário comum
-        if current_user.is_admin:
-            forma.slug = request.form.get('slug') or forma.slug
+        novo_nome = request.form.get('nome') or forma.nome
+        # Regenerar slug automaticamente a partir do novo nome
+        if novo_nome != forma.nome:
+            base = re.sub(r'[^a-z0-9]+', '_', novo_nome.lower()).strip('_')
+            if forma.user_id is None:
+                candidate = base
+                i = 0
+                while FormaPagamento.query.filter(FormaPagamento.id != forma.id, FormaPagamento.user_id.is_(None), FormaPagamento.slug==candidate).first():
+                    i += 1
+                    candidate = f"{base}_{i}"
+                forma.slug = candidate
+            else:
+                uid = forma.user_id
+                candidate = f"{base}-u{uid}"
+                i = 0
+                while FormaPagamento.query.filter(FormaPagamento.id != forma.id, FormaPagamento.user_id==uid, FormaPagamento.slug==candidate).first():
+                    i += 1
+                    candidate = f"{base}-u{uid}_{i}"
+                forma.slug = candidate
+        forma.nome = novo_nome
         forma.ativa = bool(request.form.get('ativa'))
         db.session.commit()
         flash('Forma de pagamento atualizada.', 'success')
