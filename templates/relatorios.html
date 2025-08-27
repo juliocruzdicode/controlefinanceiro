@@ -304,7 +304,7 @@
 const categoriasData = [
     {% for categoria in categorias_despesas %}
     {
-        nome: "{{ categoria.nome_completo }}",
+        nome: "{{ categoria.nome }}",
         valor: {{ categoria.total_despesa or 0 }}
     }{% if not loop.last %},{% endif %}
     {% endfor %}
@@ -313,7 +313,7 @@ const categoriasData = [
 const categoriasData = [
     {% for categoria in categorias_receitas %}
     {
-        nome: "{{ categoria.nome_completo }}",
+        nome: "{{ categoria.nome }}",
         valor: {{ categoria.total_receita or 0 }}
     }{% if not loop.last %},{% endif %}
     {% endfor %}
