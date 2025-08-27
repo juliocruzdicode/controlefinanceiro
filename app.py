@@ -1801,13 +1801,44 @@ def relatorios():
     
     # Valores padrão dos filtros
     ano_atual = datetime.now().year
-    ano = request.form.get('ano', ano_atual)
-    tipo = request.form.get('tipo', 'todos')
-    categoria_id = request.form.get('categoria')
-    conta_id = request.form.get('conta')
-    # Filtro por intervalo de datas (opcional)
-    data_inicio_str = request.form.get('data_inicio')
-    data_fim_str = request.form.get('data_fim')
+
+    # Implementar Post-Redirect-Get para manter filtros no refresh:
+    # - Se vier via POST, coletar valores e redirecionar para GET com query params
+    # - Se vier via GET, ler valores de request.args
+    if request.method == 'POST':
+        ano = request.form.get('ano', ano_atual)
+        tipo = request.form.get('tipo', 'todos')
+        categoria_id = request.form.get('categoria')
+        conta_id = request.form.get('conta')
+        # Filtro por intervalo de datas (opcional)
+        data_inicio_str = request.form.get('data_inicio')
+        data_fim_str = request.form.get('data_fim')
+
+        # Montar query params apenas com valores relevantes
+        params = {}
+        try:
+            params['ano'] = int(ano)
+        except Exception:
+            params['ano'] = ano_atual
+        params['tipo'] = tipo or 'todos'
+        if categoria_id:
+            params['categoria'] = categoria_id
+        if conta_id:
+            params['conta'] = conta_id
+        if data_inicio_str:
+            params['data_inicio'] = data_inicio_str
+        if data_fim_str:
+            params['data_fim'] = data_fim_str
+
+        return redirect(url_for('relatorios', **params))
+    else:
+        ano = request.args.get('ano', ano_atual)
+        tipo = request.args.get('tipo', 'todos')
+        categoria_id = request.args.get('categoria')
+        conta_id = request.args.get('conta')
+        # Filtro por intervalo de datas (opcional)
+        data_inicio_str = request.args.get('data_inicio')
+        data_fim_str = request.args.get('data_fim')
     
     try:
         ano = int(ano)
@@ -2138,12 +2169,16 @@ def relatorios():
     except Exception as e:
         print('DEBUG RELATORIO ERROR:', e)
 
+    # Garantir que valores usados no template para seleção sejam strings (ou vazio)
+    categoria_for_template = str(categoria_id) if categoria_id is not None else ''
+    conta_for_template = str(conta_id) if conta_id is not None else ''
+
     return render_template('relatorios.html',
                          anos_disponiveis=anos_disponiveis,
                          ano=ano,
                          tipo=tipo,
-                         categoria=categoria_id,
-                         conta=conta_id,
+                         categoria=categoria_for_template,
+                         conta=conta_for_template,
                          todas_categorias=todas_categorias,
                          todas_contas=todas_contas,
                          meses=meses,
@@ -2162,14 +2197,31 @@ def relatorios():
 @login_required
 def dados_grafico():
     """API para dados dos gráficos"""
-    # Dados por categoria (filtrados por usuário)
+    # Ler filtros opcionais via query params (ano, conta)
+    conta_id = request.args.get('conta')
+    ano = request.args.get('ano')
+
+    # Base filter por usuário
+    base_filter = [Transacao.user_id == current_user.id]
+    if conta_id:
+        try:
+            conta_id = int(conta_id)
+            base_filter.append(Transacao.conta_id == conta_id)
+        except Exception:
+            pass
+    if ano:
+        try:
+            ano_int = int(ano)
+            base_filter.append(func.strftime('%Y', Transacao.data_transacao) == str(ano_int))
+        except Exception:
+            pass
+
+    # Dados por categoria (filtrados por usuário e opcionalmente por conta/ano)
     resultado = db.session.query(
         Categoria.nome,
         Categoria.cor,
         func.sum(Transacao.valor)
-    ).join(Transacao).filter(
-        Transacao.user_id == current_user.id
-    ).group_by(Categoria.nome, Categoria.cor).all()
+    ).join(Transacao).filter(*base_filter).group_by(Categoria.nome, Categoria.cor).all()
     
     dados_categoria = {
         'labels': [r[0] for r in resultado],
@@ -2182,9 +2234,7 @@ def dados_grafico():
         func.strftime('%Y-%m', Transacao.data_transacao).label('mes'),
         Transacao.tipo,
         func.sum(Transacao.valor)
-    ).filter(
-        Transacao.user_id == current_user.id
-    ).group_by('mes', Transacao.tipo).all()
+    ).filter(*base_filter).group_by('mes', Transacao.tipo).all()
     
     # Organizando dados mensais
     meses = {}
