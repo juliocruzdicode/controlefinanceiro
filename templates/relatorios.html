@@ -697,27 +697,27 @@ function exportarExcel() {
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        onClick: (e, legendItem, legend) => {
-                                            const ci = legend.chart;
-                                            const idx = legendItem.datasetIndex;
-                                            const visible = ci.isDatasetVisible(idx);
-                                            ci.setDatasetVisibility(idx, !visible);
-                                            ci.update();
-                                        }
-                                    }
-                                    if(statusElem) statusElem.innerText = '';
-                                    tooltip: {
-                                        callbacks: {
-                                            label: ctx => ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
-                                        }
-                                    }
-                                },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                onClick: (e, legendItem, legend) => {
+                                    const ci = legend.chart;
+                                    const idx = legendItem.datasetIndex;
+                                    const visible = ci.isDatasetVisible(idx);
+                                    ci.setDatasetVisibility(idx, !visible);
+                                    ci.update();
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+                                }
+                            }
+                        },
                         scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2}) } } }
                     }
                 });
+                if(statusElem) statusElem.innerText = '';
             }catch(err){ console.error('[comparacaoContas] Erro em fetchComparacao', err); }
         }
 
