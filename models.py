@@ -539,13 +539,20 @@ class TransacaoRecorrente(db.Model):
                 print(f"Criando PROJEÇÃO para data {proxima_data} (não será salva no banco)")
                 numero_parcela = None
                 if self.is_parcelada:
+                    # Contar parcelas já persistidas antes de proxima_data
                     total_existentes = len([
                         t for t in self.transacoes
                         if t.recorrencia_id == self.id and t.data_transacao < proxima_data
                     ])
-                    numero_parcela = total_existentes + 1
+                    # Contar também as parcelas projetadas já geradas nesta chamada
+                    total_projetadas_anteriores = len([
+                        t for t in transacoes_geradas
+                        if getattr(t, 'recorrencia_id', None) == self.id and getattr(t, 'is_projetada', False) and t.data_transacao < proxima_data
+                    ])
+                    numero_parcela = total_existentes + total_projetadas_anteriores + 1
                     # Se já ultrapassamos o total de parcelas previstas, parar a geração
                     if self.total_parcelas is not None and numero_parcela > self.total_parcelas:
+                        # Não criar mais projeções além do total definido
                         print(f"Número da parcela ({numero_parcela}) excede total_parcelas ({self.total_parcelas}), encerrando geração de projeções")
                         break
                 descricao_proj = self.descricao

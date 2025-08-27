@@ -7,6 +7,7 @@ from forms import TransacaoForm, CategoriaForm, TransacaoRecorrenteForm, ContaFo
 from config import Config
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+import logging
 from sqlalchemy import func, or_
 from sqlalchemy.exc import ProgrammingError, OperationalError
 import qrcode
@@ -45,7 +46,7 @@ try:
     HAS_PANDAS = True
 except ImportError:
     HAS_PANDAS = False
-    print("⚠️  Pandas não instalado - algumas funcionalidades de análise estarão limitadas")
+    logging.warning('Pandas não instalado - algumas funcionalidades de análise estarão limitadas')
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -91,11 +92,11 @@ def obter_meses_futuros_from_request(param_name: str = 'meses', default: int | N
         meses = max_meses
     return meses
 
-# Debug - Verificar se as variáveis de ambiente estão carregadas
-print(f"GOOGLE_CLIENT_ID: {os.environ.get('GOOGLE_CLIENT_ID')}")
-print(f"GOOGLE_CLIENT_SECRET: {os.environ.get('GOOGLE_CLIENT_SECRET')}")
-print(f"app.config['GOOGLE_CLIENT_ID']: {app.config.get('GOOGLE_CLIENT_ID')}")
-print(f"app.config['GOOGLE_CLIENT_SECRET']: {app.config.get('GOOGLE_CLIENT_SECRET')}")
+# Debug - Verificar se as variáveis de ambiente estão carregadas (usando logger)
+app.logger.debug('GOOGLE_CLIENT_ID: %s', os.environ.get('GOOGLE_CLIENT_ID'))
+app.logger.debug('GOOGLE_CLIENT_SECRET: %s', os.environ.get('GOOGLE_CLIENT_SECRET'))
+app.logger.debug("app.config['GOOGLE_CLIENT_ID']: %s", app.config.get('GOOGLE_CLIENT_ID'))
+app.logger.debug("app.config['GOOGLE_CLIENT_SECRET']: %s", app.config.get('GOOGLE_CLIENT_SECRET'))
 
 # Configuração do Flask-Mail
 mail = Mail(app)
@@ -233,17 +234,16 @@ def send_verification_email(user):
         mail.send(msg)
         return True
     except Exception as e:
-        print(f"❌ Erro ao enviar email: {e}")
+        app.logger.error('Erro ao enviar email: %s', e)
         # Em caso de erro, mostrar link no console como fallback
         try:
             token = user.generate_email_verification_token()
             db.session.commit()
             verification_url = url_for('confirm_email', token=token, _external=True)
-            print(f"\n📧 FALLBACK - Link de verificação para {user.email}:")
-            print(f"{verification_url}\n")
+            app.logger.info('FALLBACK - Link de verificacao para %s: %s', user.email, verification_url)
             return True
         except Exception as fallback_error:
-            print(f"❌ Erro no fallback: {fallback_error}")
+            app.logger.error('Erro no fallback: %s', fallback_error)
             return False
 
 def send_password_reset_email(user):
@@ -293,17 +293,16 @@ def send_password_reset_email(user):
         mail.send(msg)
         return True
     except Exception as e:
-        print(f"❌ Erro ao enviar email de redefinição: {e}")
+        app.logger.error('Erro ao enviar email de redefinicao: %s', e)
         # Em caso de erro, mostrar link no console como fallback
         try:
             token = user.generate_password_reset_token()
             db.session.commit()
             reset_url = url_for('reset_password', token=token, _external=True)
-            print(f"\n📧 FALLBACK - Link de redefinição para {user.email}:")
-            print(f"{reset_url}\n")
+            app.logger.info('FALLBACK - Link de redefinicao para %s: %s', user.email, reset_url)
             return True
         except Exception as fallback_error:
-            print(f"❌ Erro no fallback: {fallback_error}")
+            app.logger.error('Erro no fallback: %s', fallback_error)
             return False
 
 # === ROTAS DE AUTENTICAÇÃO ===
@@ -376,11 +375,11 @@ def register_google():
 def _google_auth(auth_type):
     """Função auxiliar para autenticação com Google (login ou registro)"""
     # Verificar se as configurações do Google estão disponíveis
-    print(f"DEBUG google_auth: GOOGLE_CLIENT_ID: {app.config.get('GOOGLE_CLIENT_ID')}")
-    print(f"DEBUG google_auth: GOOGLE_CLIENT_SECRET: {app.config.get('GOOGLE_CLIENT_SECRET')}")
+    app.logger.debug('google_auth: GOOGLE_CLIENT_ID: %s', app.config.get('GOOGLE_CLIENT_ID'))
+    app.logger.debug('google_auth: GOOGLE_CLIENT_SECRET: %s', app.config.get('GOOGLE_CLIENT_SECRET'))
     
     if not app.config.get('GOOGLE_CLIENT_ID') or not app.config.get('GOOGLE_CLIENT_SECRET'):
-        print("DEBUG: As configurações do Google não estão disponíveis.")
+        app.logger.debug('As configuracoes do Google nao estao disponiveis')
         flash('A autenticação com Google não está configurada.', 'danger')
         return redirect(url_for('login' if auth_type == 'login' else 'register'))
     
@@ -413,12 +412,12 @@ def _google_auth(auth_type):
         
         # Inicia o fluxo de autenticação
         redirect_uri = app.config.get('GOOGLE_REDIRECT_URI')
-        print(f"DEBUG: Redirecionando para {redirect_uri}")
-        print(f"DEBUG: Nonce gerado: {nonce}")
-        print(f"DEBUG: Tipo de autenticação: {auth_type}")
+        app.logger.debug('Redirecionando para %s', redirect_uri)
+        app.logger.debug('Nonce gerado: %s', nonce)
+        app.logger.debug('Tipo de autenticacao: %s', auth_type)
         return google.authorize_redirect(redirect_uri, nonce=nonce)
     except Exception as e:
-        print(f"DEBUG: Erro na autenticação Google: {str(e)}")
+        app.logger.error('Erro na autenticacao Google: %s', str(e))
         flash(f'Erro na autenticação com Google: {str(e)}', 'danger')
         return redirect(url_for('login' if auth_type == 'login' else 'register'))
 
@@ -434,16 +433,16 @@ def callback():
         # Importar bibliotecas necessárias
         from authlib.integrations.flask_client import OAuth
         import json
-        
+
         # Log de diagnóstico
         client_id = app.config.get('GOOGLE_CLIENT_ID', '')
         client_secret = app.config.get('GOOGLE_CLIENT_SECRET', '')
         redirect_uri = app.config.get('GOOGLE_REDIRECT_URI', '')
-        
-        print(f"DEBUG: GOOGLE_CLIENT_ID: {client_id[:10]}..." if client_id else "DEBUG: GOOGLE_CLIENT_ID não definido")
-        print(f"DEBUG: GOOGLE_CLIENT_SECRET: {client_secret[:5]}..." if client_secret else "DEBUG: GOOGLE_CLIENT_SECRET não definido")
-        print(f"DEBUG: GOOGLE_REDIRECT_URI: {redirect_uri}")
-        
+
+        app.logger.debug(client_id[:10] + '...' if client_id else 'GOOGLE_CLIENT_ID não definido')
+        app.logger.debug(client_secret[:5] + '...' if client_secret else 'GOOGLE_CLIENT_SECRET não definido')
+        app.logger.debug('GOOGLE_REDIRECT_URI: %s', redirect_uri)
+
         # Inicializa o cliente OAuth
         oauth = OAuth(app)
         
@@ -461,25 +460,24 @@ def callback():
         # Obtém o token e os dados do usuário
         try:
             token = google.authorize_access_token()
-            print("DEBUG: Token obtido com sucesso")
+            app.logger.debug('Token obtido com sucesso')
             
             # Recupera o nonce da sessão
             from flask import session
             nonce = session.get('google_auth_nonce')
-            print(f"DEBUG: Nonce recuperado da sessão: {nonce}")
+            app.logger.debug('Nonce recuperado da sessao: %s', nonce)
             
             # Recupera o tipo de autenticação (login ou registro)
             auth_type = session.get('google_auth_type', 'login')
-            print(f"DEBUG: Tipo de autenticação: {auth_type}")
+            app.logger.debug('Tipo de autenticacao: %s', auth_type)
             
             # Limpa o nonce da sessão após o uso
             session.pop('google_auth_nonce', None)
-            
             # Usa o nonce para validar o token
             userinfo = google.parse_id_token(token, nonce=nonce)
-            print(f"DEBUG: Informações do usuário obtidas: {userinfo.get('email')}")
+            app.logger.debug('Informacoes do usuario obtidas: %s', userinfo.get('email'))
         except Exception as token_error:
-            print(f"ERRO DETALHADO na obtenção do token: {str(token_error)}")
+            app.logger.error('ERRO DETALHADO na obtacao do token: %s', str(token_error))
             raise token_error  # Re-lança para ser capturado pelo try/except principal
         
         # Validar email
@@ -495,22 +493,22 @@ def callback():
         foto = userinfo.get("picture", None)
     except Exception as e:
         # Log do erro
-        print(f"ERROR: Falha na autenticação Google: {str(e)}")
-        
+        app.logger.error('Falha na autenticacao Google: %s', str(e))
+
         # Mensagens mais específicas para erros comuns
         error_msg = str(e)
         if "invalid_client" in error_msg:
             flash('Falha na autenticação com Google: As credenciais do cliente são inválidas. Verifique se o ID do cliente e o segredo correspondem aos valores no Google Cloud Console.', 'danger')
-            print("DICA: Verifique se o ID do cliente e o segredo no arquivo .env correspondem exatamente aos valores no Google Cloud Console.")
+            app.logger.debug('DICA: Verifique se o ID do cliente e o segredo no arquivo .env correspondem exatamente aos valores no Google Cloud Console.')
         elif "redirect_uri_mismatch" in error_msg:
             flash('Falha na autenticação com Google: O URI de redirecionamento não está autorizado no Console do Google Cloud.', 'danger')
-            print(f"DICA: Adicione {app.config.get('GOOGLE_REDIRECT_URI')} às URIs de redirecionamento autorizadas no Google Cloud Console.")
+            app.logger.debug('DICA: Adicione %s as URIs de redirecionamento autorizadas no Google Cloud Console.', app.config.get('GOOGLE_REDIRECT_URI'))
         elif "nonce" in error_msg:
             flash('Falha na autenticação com Google: Problema com a verificação de segurança. Tente novamente.', 'danger')
-            print("DICA: Ocorreu um problema com o parâmetro nonce. A sessão pode ter expirado ou sido perdida. Tentar novamente deve resolver.")
+            app.logger.debug('DICA: Ocorreu um problema com o parametro nonce. A sessao pode ter expirado ou sido perdida. Tentar novamente deve resolver.')
         else:
             flash(f'Falha na autenticação com Google: {error_msg}', 'danger')
-            print(f"DICA: Erro não específico. Verifique as configurações do Google OAuth e tente novamente.")
+            app.logger.debug('DICA: Erro nao especifico. Verifique as configuracoes do Google OAuth e tente novamente.')
         
         return redirect(url_for('login'))
     
@@ -752,9 +750,9 @@ def forgot_password():
         
         if user:
             if send_password_reset_email(user):
-                print(f"✅ Email de redefinição enviado para {user.email}")
+                app.logger.info(f"✅ Email de redefinição enviado para {user.email}")
             else:
-                print(f"❌ Falha ao enviar email de redefinição para {user.email}")
+                app.logger.error(f"❌ Falha ao enviar email de redefinição para {user.email}")
         
         return redirect(url_for('login'))
     
@@ -1040,7 +1038,7 @@ def dashboard():
                              transacoes_recentes=transacoes_recentes)
     except (ProgrammingError, OperationalError) as e:
         # DB schema mismatch (e.g. missing coluna forma_pagamento) - show degraded dashboard
-        print(f"DB SCHEMA ERROR in dashboard: {e}")
+        app.logger.exception('DB SCHEMA ERROR in dashboard: %s', e)
         flash('Erro no banco de dados: coluna ausente. Execute a migração de esquema (veja logs).', 'danger')
         return render_template('dashboard.html',
                              receitas_total=0,
@@ -1117,20 +1115,15 @@ def transacoes():
     projecoes = []
     hoje = datetime.utcnow().date()
     
-    # Logs para debug
-    print(f"DEBUG - Parâmetros da rota transações:")
-    print(f"DEBUG - mostrar_projecoes: {mostrar_projecoes}")
-    print(f"DEBUG - Data atual: {hoje}")
-    print(f"DEBUG - Mês/Ano visualizado: {mes_atual}/{ano_atual}")
-    
+    # Logs para debug via logger
+    app.logger.debug('Parâmetros da rota transacoes: mostrar_projecoes=%s, hoje=%s, mes_atual=%s, ano_atual=%s', mostrar_projecoes, hoje, mes_atual, ano_atual)
+
     # Se estamos visualizando um mês futuro, buscar projeções
     data_visualizada_obj = datetime(ano_atual, mes_atual, 1).date()
-    print(f"DEBUG - Data visualizada: {data_visualizada_obj}")
-    print(f"DEBUG - Data atual (primeiro dia do mês): {hoje.replace(day=1)}")
-    print(f"DEBUG - Condição para mostrar projeções: {mostrar_projecoes and data_visualizada_obj >= hoje.replace(day=1)}")
+    app.logger.debug('Data visualizada=%s; primeiro dia do mes atual=%s; condicao mostrar_projecoes=%s', data_visualizada_obj, hoje.replace(day=1), (mostrar_projecoes and data_visualizada_obj >= hoje.replace(day=1)))
     
     if mostrar_projecoes and data_visualizada_obj >= hoje.replace(day=1):
-        print(f"Gerando projeções para mês futuro: {mes_atual}/{ano_atual}")
+        app.logger.debug('Gerando projecoes para mes futuro: %s/%s', mes_atual, ano_atual)
         
         # Obter projeções para este mês específico
         primeiro_dia_mes = datetime(ano_atual, mes_atual, 1)
@@ -1147,20 +1140,20 @@ def transacoes():
         
         # ID temporário para projeções (negativo para evitar conflitos)
         next_temp_id = -1
-        
-        print(f"DEBUG - Total de recorrências ativas: {len(recorrentes_ativas)}")
-        
+
+        app.logger.debug('Total de recorrencias ativas: %s', len(recorrentes_ativas))
+
         # usar configuração centralizada para horizonte de projeções
         meses_padrao_projecoes = app.config.get('MESES_FUTUROS_DEFAULT', 36)
         for recorrente in recorrentes_ativas:
-            print(f"DEBUG - Processando recorrência: {recorrente.id} - {recorrente.descricao}")
+            app.logger.debug('Processando recorrencia: %s - %s', recorrente.id, recorrente.descricao)
             # Gerar transações projetadas usando o método atualizado (apenas projeções)
             transacoes_projetadas = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_padrao_projecoes, apenas_projetar=True)
             # Filtrar apenas as transações deste mês
             for projecao in transacoes_projetadas:
                 if primeiro_dia_mes <= projecao.data_transacao <= ultimo_dia_mes:
                     projecoes.append(projecao)
-                    print(f"DEBUG - Projeção adicionada: {projecao.descricao} para {projecao.data_transacao}")
+                    app.logger.debug('Projecao adicionada: %s para %s', projecao.descricao, projecao.data_transacao)
     
     # Paginar transações do banco de dados
     transacoes_pagination = query_final.paginate(
@@ -1182,35 +1175,34 @@ def transacoes():
 
     # Só adicionar projeções para datas que não têm transação real
     projecoes_filtradas = [p for p in projecoes if (p.data_transacao, p.recorrencia_id) not in datas_reais]
-    print(f"DEBUG - Projeções filtradas (sem datas duplicadas): {len(projecoes_filtradas)}")
+    app.logger.debug('Projecoes filtradas (sem datas duplicadas): %s', len(projecoes_filtradas))
 
     if projecoes_filtradas:
         projecoes_filtradas.sort(key=lambda x: x.data_transacao)
         transacoes_combinadas.extend(projecoes_filtradas)
         transacoes_combinadas.sort(key=lambda x: x.data_transacao, reverse=True)
         transacoes_pagination.total += len(projecoes_filtradas)
-        print(f"DEBUG - Lista final: {len(transacoes_combinadas)} transações, das quais {len(projecoes_filtradas)} são projeções")
+        app.logger.debug('Lista final: %s transacoes, das quais %s sao projecoes', len(transacoes_combinadas), len(projecoes_filtradas))
         for p in projecoes_filtradas:
-            print(f"DEBUG - Projeção: ID={p.id}, Data={p.data_transacao}, Valor={p.valor}, Descrição={p.descricao}")
+            app.logger.debug('Projecao: ID=%s, Data=%s, Valor=%s, Descricao=%s', p.id, p.data_transacao, p.valor, p.descricao)
     else:
-        print("DEBUG - Nenhuma projeção gerada")
+        app.logger.debug('Nenhuma projecao gerada')
     
     # Verificar se estamos próximos ao fim das transações recorrentes e gerar mais se necessário
     # CRÍTICO: Esta é a parte que garante a geração contínua de transações
     
-    print("\n========== INICIANDO VERIFICAÇÃO DE TRANSAÇÕES RECORRENTES ==========")
-    print(f"Mês visualizado: {mes_atual}/{ano_atual} ({mes_nome})")
+    app.logger.debug('INICIANDO VERIFICACAO DE TRANSACOES RECORRENTES; mes visualizado=%s/%s (%s)', mes_atual, ano_atual, mes_nome)
     
     # Definir data limite com base no mês visualizado
     # SEMPRE considerar o mês visualizado como referência, não filtros
     # Usar o mês visualizado como referência para decisões de geração
     data_visualizada = datetime.combine(primeiro_dia, datetime.min.time())
-    print(f"Usando mês visualizado como referência: {data_visualizada}")
+    app.logger.debug('Usando mes visualizado como referencia: %s', data_visualizada)
     
     # Calcular quantos meses no futuro estamos visualizando
     hoje = datetime.utcnow()
     diferenca_meses = ((data_visualizada.year - hoje.year) * 12 + data_visualizada.month - hoje.month)
-    print(f"Diferença em meses entre hoje e mês visualizado: {diferenca_meses}")
+    app.logger.debug('Diferenca em meses entre hoje e mes visualizado: %s', diferenca_meses)
     
     # Definir horizonte de geração baseado na navegação
     # SEMPRE gerar pelo menos X meses além do mês visualizado
@@ -1224,26 +1216,26 @@ def transacoes():
         # Para meses futuros, gerar até a data visualizada + buffer
         meses_para_gerar = diferenca_meses + meses_alem_visualizacao
     
-    print(f"Meses para gerar a partir de hoje: {meses_para_gerar}")
+    app.logger.debug('Meses para gerar a partir de hoje: %s', meses_para_gerar)
     
     # Data limite para geração de transações
     data_limite = hoje + relativedelta(months=meses_para_gerar)
-    print(f"Data limite para geração: {data_limite}")
+    app.logger.debug('Data limite para geracao: %s', data_limite)
     
     # Buscar todas as transações recorrentes ATIVAS do usuário
-    print("\n----- Buscando recorrências ativas -----")
+    app.logger.debug('Buscando recorrencias ativas')
     
     # IMPORTANTE: Verifique se estamos usando o valor correto para o status ativo
-    print(f"Valor do status ativo na enumeração: {StatusRecorrencia.ATIVA.value}")
+    app.logger.debug('Valor do status ativo na enumeracao: %s', StatusRecorrencia.ATIVA.value)
     
     # Buscar por todas as recorrências do usuário para diagnóstico
     todas_recorrencias = TransacaoRecorrente.query.filter_by(
         user_id=current_user.id
     ).all()
     
-    print(f"Encontradas {len(todas_recorrencias)} recorrências para o usuário (de qualquer status):")
+    app.logger.debug('Encontradas %s recorrencias para o usuario (de qualquer status)', len(todas_recorrencias))
     for r in todas_recorrencias:
-        print(f"  - ID: {r.id}, Descrição: {r.descricao}, Status: {r.status.value}, Tipo: {r.tipo_recorrencia.value}")
+        app.logger.debug('  - ID: %s, Descricao: %s, Status: %s, Tipo: %s', r.id, r.descricao, r.status.value, r.tipo_recorrencia.value)
     
     # Buscar corretamente por status (usando a enumeração diretamente, não o valor)
     recorrentes_ativas = TransacaoRecorrente.query.filter_by(
@@ -1251,20 +1243,20 @@ def transacoes():
         status=StatusRecorrencia.ATIVA
     ).all()
     
-    print(f"Recorrências ATIVAS encontradas: {len(recorrentes_ativas)} de {len(todas_recorrencias)} total")
+    app.logger.debug('Recorrencias ATIVAS encontradas: %s de %s total', len(recorrentes_ativas), len(todas_recorrencias))
     
     # Se não encontrou nenhuma, tente buscar todas as recorrências do usuário para diagnóstico
     if not recorrentes_ativas:
-        print("Nenhuma recorrência com status ATIVA encontrada usando a enumeração.")
+        app.logger.debug('Nenhuma recorrencia com status ATIVA encontrada usando a enumeracao.')
     else:
-        print(f"Encontradas {len(recorrentes_ativas)} recorrências ativas:")
+        app.logger.debug('Encontradas %s recorrencias ativas:', len(recorrentes_ativas))
         for r in recorrentes_ativas:
-            print(f"  - ID: {r.id}, Descrição: {r.descricao}, Tipo: {r.tipo_recorrencia.value}, Status: {r.status.value}")
+            app.logger.debug('  - ID: %s, Descricao: %s, Tipo: %s, Status: %s', r.id, r.descricao, r.tipo_recorrencia.value, r.status.value)
     
     if not recorrentes_ativas:
-        print(f"Nenhuma recorrência ativa encontrada para o usuário {current_user.id}. Não há transações para gerar.")
+        app.logger.debug('Nenhuma recorrencia ativa encontrada para o usuario %s. Nao ha transacoes para gerar.', current_user.id)
     else:
-        print(f"Processando {len(recorrentes_ativas)} recorrências ativas encontradas")
+        app.logger.debug('Processando %s recorrencias ativas encontradas', len(recorrentes_ativas))
     
     # Para cada recorrente ativa, SEMPRE verificar e gerar transações
     transacoes_recorrentes_geradas = 0
@@ -1272,24 +1264,21 @@ def transacoes():
     
     for recorrente in recorrentes_ativas:
         try:
-            print(f"\nProcessando recorrência {recorrente.id}: {recorrente.descricao}")
-            
-            # SEMPRE GERAR transações para garantir cobertura adequada
-            # Não fazer verificações que possam impedir a geração
-            print(f"Gerando transações para {meses_para_gerar} meses")
-            
+            app.logger.debug('\nProcessando recorrencia %s: %s', recorrente.id, recorrente.descricao)
+            app.logger.debug('Gerando transacoes para %s meses', meses_para_gerar)
+
             # Chamar diretamente o método de geração com o horizonte calculado
             novas_transacoes = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_para_gerar)
-            
+
             transacoes_recorrentes_geradas += len(novas_transacoes)
             if len(novas_transacoes) > 0:
                 recorrentes_atualizadas.append(recorrente.id)
-                print(f"Geradas {len(novas_transacoes)} novas transações")
+                app.logger.debug('Geradas %s novas transacoes', len(novas_transacoes))
             else:
-                print("Nenhuma nova transação gerada")
+                app.logger.debug('Nenhuma nova transacao gerada')
                 
         except Exception as e:
-            print(f"ERRO ao gerar transações para recorrência {recorrente.id}: {str(e)}")
+            app.logger.error('ERRO ao gerar transacoes para recorrencia %s: %s', recorrente.id, str(e))
             import traceback
             traceback.print_exc()  # Exibir stack trace completo
     
@@ -1981,24 +1970,24 @@ def relatorios():
     # Para recorrentes: priorizar real sobre projetada por (ano, mês, recorrencia_id)
     # Para não recorrentes: deduplicar por (ano, mês, categoria_id, tipo)
     transacoes_unicas = {}
-    print("==== DEBUG RELATORIO: TRANSAÇÕES REAIS ====")
+    app.logger.debug('RELATORIO: TRANSACOES REAIS: %s itens', len(transacoes))
     for t in transacoes:
         if t.recorrencia_id:
             chave = (t.data_transacao.year, t.data_transacao.month, t.recorrencia_id)
         else:
             chave = (t.data_transacao.year, t.data_transacao.month, t.categoria_id, t.tipo)
-        print(f"REAL: chave={chave} valor={t.valor} id={getattr(t, 'id', None)} recorrencia_id={t.recorrencia_id} data={t.data_transacao}")
+        app.logger.debug('REAL: chave=%s valor=%s id=%s recorrencia_id=%s data=%s', chave, t.valor, getattr(t, 'id', None), t.recorrencia_id, t.data_transacao)
         transacoes_unicas[chave] = t
-    print("==== DEBUG RELATORIO: TRANSAÇÕES PROJETADAS ====")
+    app.logger.debug('RELATORIO: TRANSACOES PROJETADAS: %s itens', len(transacoes_projetadas))
     for p in transacoes_projetadas:
         if p.recorrencia_id:
             chave = (p.data_transacao.year, p.data_transacao.month, p.recorrencia_id)
         else:
             chave = (p.data_transacao.year, p.data_transacao.month, p.categoria_id, p.tipo)
-        print(f"PROJETADA: chave={chave} valor={p.valor} recorrencia_id={p.recorrencia_id} data={p.data_transacao}")
+        app.logger.debug('PROJETADA: chave=%s valor=%s recorrencia_id=%s data=%s', chave, p.valor, p.recorrencia_id, p.data_transacao)
         if chave not in transacoes_unicas:
             transacoes_unicas[chave] = p
-    print(f"==== DEBUG RELATORIO: TOTAL TRANSACOES UNICAS: {len(transacoes_unicas)} ====")
+    app.logger.debug('RELATORIO: TOTAL TRANSACOES UNICAS: %s', len(transacoes_unicas))
     transacoes = list(transacoes_unicas.values())
     # Filtrar apenas transações do ano selecionado (evita somar projeções de outros anos)
     try:
@@ -2158,16 +2147,16 @@ def relatorios():
                 valor_mes += t.valor
             matriz_dados[categoria.id][meses[idx]] = valor_mes if valor_mes > 0 else 0
     
-    # Debug: imprimir totais_mensais e matriz_dados para inspeção
+    # Debug: imprimir totais_mensais e matriz_dados para inspeção (logger)
     try:
-        print('==== DEBUG RELATORIO: TOTAIS_MENSAIS ====')
+        app.logger.debug('RELATORIO: TOTAIS_MENSAIS')
         for m in meses:
-            print(f"{m}: receita={totais_mensais[m]['receita']}, despesa={totais_mensais[m]['despesa']}")
-        print('==== DEBUG RELATORIO: MATRIZ_DADOS ====')
+            app.logger.debug('%s: receita=%s, despesa=%s', m, totais_mensais[m]['receita'], totais_mensais[m]['despesa'])
+        app.logger.debug('RELATORIO: MATRIZ_DADOS')
         for cat_id, row in matriz_dados.items():
-            print(f"Categoria {cat_id}: " + ", ".join([f"{mes}={row.get(mes,0)}" for mes in meses]))
+            app.logger.debug('Categoria %s: %s', cat_id, ', '.join([f"{mes}={row.get(mes,0)}" for mes in meses]))
     except Exception as e:
-        print('DEBUG RELATORIO ERROR:', e)
+        app.logger.exception('RELATORIO ERROR: %s', e)
 
     # Preparar linhas por transação para a tabela detalhada
     # Agrupar informação de categoria raiz / subcategoria para exibição
@@ -2267,10 +2256,10 @@ def relatorios():
 
     # DEBUG: imprimir primeiras linhas agrupadas para facilitar troubleshooting nos testes
     try:
-        print('DEBUG_MESES:', meses)
-        print('DEBUG_TRANSACOES_LINHAS:', transacoes_linhas[:5])
+        app.logger.debug('DEBUG_MESES: %s', meses)
+        app.logger.debug('DEBUG_TRANSACOES_LINHAS: %s', transacoes_linhas[:5])
         for g in transacoes_linhas[:5]:
-            print('DEBUG_KEYS_MONTHLY:', list(g['monthly'].keys()))
+            app.logger.debug('DEBUG_KEYS_MONTHLY: %s', list(g['monthly'].keys()))
     except Exception:
         pass
 
@@ -3129,7 +3118,7 @@ def criar_tabelas():
                 db.session.add(conta)
             
             db.session.commit()
-            print("✅ Contas padrão criadas!")
+            app.logger.info("✅ Contas padrão criadas!")
         
         # Criar categorias padrão se não existirem
         if not Categoria.query.first():
@@ -3199,7 +3188,7 @@ def criar_tabelas():
                 db.session.add(subcategoria)
             
             db.session.commit()
-            print("✅ Categorias hierárquicas criadas com sucesso!")
+            app.logger.info("✅ Categorias hierárquicas criadas com sucesso!")
 
 @app.route('/admin/limpar-todas-transacoes', methods=['POST'])
 @app.route('/admin/limpar-transacoes', methods=['POST'])
@@ -3844,5 +3833,5 @@ if __name__ == '__main__':
     port = args.port
     debug = True  # Forçar modo debug
     
-    print(f"Starting app on port {port} with debug={debug}")
+    app.logger.info('Starting app on port %s with debug=%s', port, debug)
     app.run(host='0.0.0.0', port=port, debug=debug)
