@@ -277,6 +277,33 @@
     </div>
 </div>
 
+<!-- Comparação de Contas no Ano -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-project-diagram"></i> Comparação de Contas no Ano</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <label for="contasSelect" class="form-label">Contas (selecione para filtrar)</label>
+                        <select id="contasSelect" class="form-control" multiple style="min-width:220px; max-width:420px;"></select>
+                    </div>
+                    <div>
+                        <label for="anoComparar" class="form-label">Ano</label>
+                        <select id="anoComparar" class="form-control"></select>
+                    </div>
+                    <div class="ps-3">
+                        <button id="btnAtualizarComparacao" class="btn btn-primary" style="margin-top:24px;">Atualizar</button>
+                    </div>
+                </div>
+                <canvas id="comparacaoContasChart" height="280"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- CSS personalizado -->
 <style>
 .sticky-left {
@@ -566,5 +593,78 @@ function exportarExcel() {
     link.click();
     document.body.removeChild(link);
 }
+</script>
+<script>
+// Comparação de Contas - JS
+(function(){
+    const contasSelect = document.getElementById('contasSelect');
+    const anoSelect = document.getElementById('anoComparar');
+    const btnAtualizar = document.getElementById('btnAtualizarComparacao');
+    const ctxCompar = document.getElementById('comparacaoContasChart').getContext('2d');
+    let comparacaoChart = null;
+
+    // Popula anos disponíveis
+    const anos = [{% for ano_opt in anos_disponiveis %}{{ ano_opt }}{% if not loop.last %}, {% endif %}{% endfor %}];
+    anos.forEach(a => {
+        const opt = document.createElement('option'); opt.value = a; opt.text = a; anoSelect.appendChild(opt);
+    });
+    // Seleciona o ano atual da página se existir
+    {% if ano %}
+    anoSelect.value = '{{ ano }}';
+    {% else %}
+    anoSelect.value = new Date().getFullYear();
+    {% endif %}
+
+    // Popula contas
+    const contasData = [
+        {% for c in todas_contas %}
+        { id: {{ c.id }}, nome: "{{ c.nome }}" }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    contasData.forEach(c => {
+        const o = document.createElement('option'); o.value = c.id; o.text = c.nome; contasSelect.appendChild(o);
+    });
+
+    function buildDatasets(accounts){
+        const colors = ['#4E79A7','#F28E2B','#E15759','#76B7B2','#59A14F','#EDC949','#AF7AA1','#FF9DA7','#9C755F','#BAB0AC'];
+        return accounts.map((acc, i) => ({
+            label: acc.nome,
+            data: acc.monthly.map(v => Number((v||0).toFixed(2))),
+            backgroundColor: colors[i % colors.length],
+            borderWidth: 1
+        }));
+    }
+
+    async function fetchComparacao(){
+        const year = anoSelect.value;
+        const selected = Array.from(contasSelect.selectedOptions).map(o => o.value);
+        const params = new URLSearchParams();
+        params.set('year', year);
+        if(selected.length) params.set('contas', selected.join(','));
+
+        const res = await fetch('/api/comparar-contas-ano?' + params.toString(), { credentials: 'same-origin' });
+        if(!res.ok){ console.error('Erro ao carregar comparação', res.status); return; }
+        const data = await res.json();
+
+        const labels = data.months || [{% for m in meses %}'{{ m }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+        const datasets = buildDatasets(data.accounts || []);
+
+        if(comparacaoChart) comparacaoChart.destroy();
+        comparacaoChart = new Chart(ctxCompar, {
+            type: 'bar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: ctx => 'R$ ' + Number(ctx.parsed.y).toFixed(2) } } },
+                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => 'R$ ' + Number(v).toFixed(2) } } }
+            }
+        });
+    }
+
+    btnAtualizar.addEventListener('click', fetchComparacao);
+    // Inicializar no carregamento
+    document.addEventListener('DOMContentLoaded', fetchComparacao);
+})();
 </script>
 {% endblock %}
