@@ -130,21 +130,22 @@
                         <tbody>
                             {# Novo: renderizar linhas por transação se disponível #}
                             {% if transacoes_linhas is defined and transacoes_linhas %}
-                                {% for t in transacoes_linhas %}
-                                <tr {% if t.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
-                                    <td class="sticky-left ps-3">{{ t.descricao or '-' }}</td>
-                                    <td>{{ t.categoria_raiz or '-' }}</td>
-                                    <td>{{ t.subcategoria or '-' }}</td>
+                                {% for g in transacoes_linhas %}
+                                <tr {% if g.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
+                                    <td class="sticky-left ps-3">{{ g.descricao or '-' }}</td>
+                                    <td>{{ g.categoria_raiz or '-' }}</td>
+                                    <td>{{ g.subcategoria or '-' }}</td>
                                     {% for mes in meses %}
                                     <td class="text-end">
-                                        {% if mes == t.month_label %}
-                                            R$ {{ "%.2f"|format(t.valor|float) }}
+                                        {% set val = g.monthly.get(mes, 0) %}
+                                        {% if val %}
+                                            R$ {{ "%.2f"|format(val|float) }}
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     {% endfor %}
-                                        <td class="text-end">R$ {{ "%.2f"|format(t.total) }}</td>
+                                    <td class="text-end">R$ {{ "%.2f"|format(g.total|float) }}</td>
                                 </tr>
                                 {% endfor %}
                             {% else %}

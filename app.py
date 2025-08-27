@@ -2231,6 +2231,15 @@ def relatorios():
     categoria_for_template = str(categoria_id) if categoria_id is not None else ''
     conta_for_template = str(conta_id) if conta_id is not None else ''
 
+    # DEBUG: imprimir primeiras linhas agrupadas para facilitar troubleshooting nos testes
+    try:
+        print('DEBUG_MESES:', meses)
+        print('DEBUG_TRANSACOES_LINHAS:', transacoes_linhas[:5])
+        for g in transacoes_linhas[:5]:
+            print('DEBUG_KEYS_MONTHLY:', list(g['monthly'].keys()))
+    except Exception:
+        pass
+
     return render_template('relatorios.html',
                          anos_disponiveis=anos_disponiveis,
                          ano=ano,
