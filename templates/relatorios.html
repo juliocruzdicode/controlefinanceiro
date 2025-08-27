@@ -116,9 +116,9 @@
             <div class="card-body p-0">
                 <div class="table-responsive" style="max-height: 70vh; overflow-x: auto; overflow-y: auto;">
                     <table class="table table-sm table-bordered mb-0" id="relatorioTable">
-                        <thead class="table-dark">
+                        <thead>
                             <tr>
-                                <th class="sticky-left" style="min-width: 220px;">Descrição</th>
+                                <th class="sticky-left descricao-header" style="min-width: 220px;">Descrição</th>
                                 <th style="min-width: 200px;">Categoria</th>
                                 <th style="min-width: 180px;">Subcategoria</th>
                                 {% for mes in meses %}
@@ -132,7 +132,7 @@
                             {% if transacoes_linhas is defined and transacoes_linhas %}
                                 {% for g in transacoes_linhas %}
                                 <tr {% if g.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
-                                    <td class="sticky-left ps-3">{{ g.descricao or '-' }}</td>
+                                    <td class="sticky-left ps-3 descricao-cell">{{ g.descricao or '-' }}</td>
                                     <td>{{ g.categoria_raiz or '-' }}</td>
                                     <td>{{ g.subcategoria or '-' }}</td>
                                     {% for mes in meses %}
@@ -285,6 +285,33 @@
     z-index: 10;
     background-color: #ffffff;
     border-right: 2px solid #dee2e6;
+}
+
+/* Cabeçalho legível */
+thead th {
+    background-color: #f8f9fa; /* claro */
+    color: #212529; /* texto escuro */
+    position: sticky;
+    top: 0;
+    z-index: 20; /* acima das linhas */
+}
+
+/* Cabeçalho específico para coluna de descrição (manter acima da primeira coluna fixa) */
+.descricao-header {
+    background-color: #f8f9fa !important;
+}
+
+/* Limitar largura da coluna descrição a 50% da tabela e permitir quebra de texto */
+.descricao-cell {
+    max-width: 50%;
+    white-space: normal; /* permitir quebra de linha */
+    word-break: break-word;
+}
+
+/* Garantir que a primeira coluna fique acima do conteúdo quando rolar horizontalmente */
+.sticky-left {
+    z-index: 30; /* maior que cabeçalho de célula para sobrepor o conteúdo */
+    background-color: #ffffff; /* reforçar fundo sólido para cobrir textos por baixo */
 }
 
 .table-responsive {
