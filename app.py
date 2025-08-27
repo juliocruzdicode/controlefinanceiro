@@ -2284,6 +2284,82 @@ def relatorios():
                          matriz_dados=matriz_dados,
                          transacoes_linhas=transacoes_linhas)
 
+@app.route('/api/comparar-contas-ano')
+@login_required
+def api_comparar_contas_ano():
+    """Retorna comparação mensal (net) por conta para um ano.
+
+    Query params:
+      - year (int): ano para calcular (padrão: ano atual)
+      - contas (csv ids): opcional, filtrar contas específicas
+
+    Response JSON:
+      {
+        'success': True,
+        'year': 2025,
+        'months': ['Jan 2025', ...],
+        'accounts': [
+           {'id': 1, 'nome': 'Conta X', 'cor': '#abc', 'monthly': [..12 values..], 'total': 123.45},
+           ...
+        ]
+      }
+    """
+    try:
+        try:
+            year = int(request.args.get('year', datetime.now().year))
+        except Exception:
+            year = datetime.now().year
+
+        # Optional filter: contas=1,2,3
+        contas_param = request.args.get('contas')
+        if contas_param:
+            try:
+                conta_ids = [int(x) for x in contas_param.split(',') if x.strip()]
+                contas = Conta.query.filter(Conta.user_id == current_user.id, Conta.id.in_(conta_ids)).all()
+            except Exception:
+                contas = Conta.query.filter_by(user_id=current_user.id).all()
+        else:
+            contas = Conta.query.filter_by(user_id=current_user.id).all()
+
+        # Fetch transactions for the year
+        periodo_inicio = datetime(year, 1, 1)
+        periodo_fim = datetime(year, 12, 31, 23, 59, 59)
+        transacoes = Transacao.query.filter(
+            Transacao.user_id == current_user.id,
+            Transacao.data_transacao >= periodo_inicio,
+            Transacao.data_transacao <= periodo_fim
+        ).all()
+
+        # Prepare months labels
+        meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+        months = [f"{meses_pt[m-1]} {year}" for m in range(1,13)]
+
+        # Group transactions by conta and month (net: receita +, despesa -)
+        accounts_data = []
+        for conta in contas:
+            monthly = [0.0] * 12
+            for t in transacoes:
+                if t.conta_id != conta.id:
+                    continue
+                m = t.data_transacao.month - 1
+                if t.tipo == TipoTransacao.RECEITA:
+                    monthly[m] += t.valor
+                else:
+                    monthly[m] -= t.valor
+            total = sum(monthly)
+            accounts_data.append({
+                'id': conta.id,
+                'nome': conta.nome,
+                'cor': getattr(conta, 'cor', None),
+                'monthly': monthly,
+                'total': total
+            })
+
+        return jsonify({'success': True, 'year': year, 'months': months, 'accounts': accounts_data})
+    except Exception as e:
+        app.logger.exception('Erro ao gerar comparação por contas')
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/api/dados-grafico')
 @login_required
 def dados_grafico():
