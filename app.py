@@ -1926,9 +1926,25 @@ def relatorios():
         if not recorrente.data_fim or recorrente.data_fim > agora:
             # Gerar apenas o número de meses necessário para cobrir o ano filtrado
             projecoes = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_futuros_relatorio, apenas_projetar=True)
+            # Se houver filtro por conta, filtrar também as projeções para a mesma conta
+            if conta_id:
+                try:
+                    conta_filter_val = int(conta_id)
+                except Exception:
+                    conta_filter_val = None
+            else:
+                conta_filter_val = None
+
+            filtered_projecoes = []
             for p in projecoes:
+                # p pode ter atributo conta_id; respeitar o filtro quando presente
+                if conta_filter_val is not None:
+                    if getattr(p, 'conta_id', None) != conta_filter_val:
+                        continue
                 p.is_projetada = True
-            transacoes_projetadas.extend(projecoes)
+                filtered_projecoes.append(p)
+
+            transacoes_projetadas.extend(filtered_projecoes)
 
     # Unir transações reais e projetadas, evitando duplicidade
     # Para recorrentes: priorizar real sobre projetada por (ano, mês, recorrencia_id)
