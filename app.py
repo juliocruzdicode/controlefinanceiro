@@ -3604,6 +3604,41 @@ def nova_tag_api():
             'message': f'Erro ao criar tag: {str(e)}'
         }), 500
 
+
+@app.route('/api/forma/nova', methods=['POST'])
+@login_required
+def nova_forma_api():
+    """Cria nova forma de pagamento para o usuário atual (inline via AJAX)"""
+    try:
+        data = request.get_json() or {}
+        nome = (data.get('nome') or '').strip()
+        slug = (data.get('slug') or '').strip()
+
+        if not nome:
+            return jsonify({'success': False, 'message': 'Nome é obrigatório'}), 400
+
+        # Gerar slug se não fornecido
+        if not slug:
+            import re as _re
+            slug = _re.sub(r'[^a-z0-9]+', '_', nome.lower()).strip('_')
+
+        # Sufixar slug com id de usuário para evitar colisões
+        slug_user = f"{slug}-u{current_user.id}"
+
+        # Verificar existência
+        exists = FormaPagamento.query.filter_by(user_id=current_user.id, slug=slug_user).first()
+        if exists:
+            return jsonify({'success': False, 'message': 'Já existe uma forma com este identificador para o seu usuário'}), 400
+
+        forma = FormaPagamento(nome=nome, slug=slug_user, user_id=current_user.id)
+        db.session.add(forma)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Forma criada com sucesso', 'forma': {'id': forma.id, 'nome': forma.nome}})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

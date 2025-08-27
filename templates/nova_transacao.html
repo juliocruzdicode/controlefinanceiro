@@ -100,7 +100,12 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 {{ form.forma_pagamento.label(class="form-label") }}
-                                {{ form.forma_pagamento(class="form-select" + (" is-invalid" if form.forma_pagamento.errors else "")) }}
+                                <div class="input-group">
+                                    {{ form.forma_pagamento(class="form-select" + (" is-invalid" if form.forma_pagamento.errors else "")) }}
+                                    <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#modalNovaForma" title="Criar Nova Forma de Pagamento">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
                                 {% if form.forma_pagamento.errors %}
                                     <div class="invalid-feedback">
                                         {% for error in form.forma_pagamento.errors %}{{ error }}{% endfor %}
@@ -794,5 +799,92 @@ document.getElementById('modalNovaTag').addEventListener('hidden.bs.modal', func
     document.getElementById('formNovaTag').reset();
     document.getElementById('corTag').value = '#6c757d';
 });
+
+// Modal Nova Forma handlers
+document.getElementById('modalNovaForma')?.addEventListener('hidden.bs.modal', function () {
+    const alertForma = document.getElementById('alertForma');
+    if (alertForma) {
+        alertForma.style.display = 'none';
+    }
+    const form = document.getElementById('formNovaForma');
+    if (form) form.reset();
+});
+
+// Função para criar nova forma de pagamento via AJAX
+function criarForma() {
+    const nome = document.getElementById('nomeForma').value.trim();
+    const alertElement = document.getElementById('alertForma');
+
+    if (!nome) {
+        showAlert('alertForma', 'Nome da forma é obrigatório!', 'danger');
+        return;
+    }
+
+    alertElement.style.display = 'none';
+
+    fetch('/api/forma/nova', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ nome: nome })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const select = document.querySelector('select[name="forma_pagamento"]');
+            const newOption = new Option(data.forma.nome, data.forma.id);
+            select.add(newOption);
+            select.value = data.forma.id;
+
+            // Fechar modal e resetar form
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaForma'));
+            if (modal) modal.hide();
+            document.getElementById('formNovaForma').reset();
+
+            showToast('Forma de pagamento criada com sucesso!', 'success');
+        } else {
+            showAlert('alertForma', data.message || 'Erro ao criar forma.', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showAlert('alertForma', 'Erro ao criar forma. Tente novamente.', 'danger');
+    });
+}
+
+// Inserir Modal Nova Forma HTML
+</script>
+
+<!-- Modal Nova Forma -->
+<div class="modal fade" id="modalNovaForma" tabindex="-1" aria-labelledby="modalNovaFormaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNovaFormaLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Nova Forma de Pagamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovaForma">
+                    <div class="mb-3">
+                        <label for="nomeForma" class="form-label">Nome da Forma *</label>
+                        <input type="text" class="form-control" id="nomeForma" required maxlength="100" placeholder="Ex: Cartão de Crédito">
+                    </div>
+                    <div id="alertForma" class="alert" style="display: none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="criarForma()">
+                    <i class="fas fa-save me-1"></i>Criar Forma
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
 </script>
 {% endblock %}
