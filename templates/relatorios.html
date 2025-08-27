@@ -299,6 +299,7 @@
                     </div>
                 </div>
                 <canvas id="comparacaoContasChart" height="280"></canvas>
+                <div id="comparacaoContasStatus" class="text-muted mt-2" style="font-size:0.9rem;"></div>
             </div>
         </div>
     </div>
@@ -597,101 +598,139 @@ function exportarExcel() {
 <script>
 // Comparação de Contas - JS
 (function(){
-    const contasSelect = document.getElementById('contasSelect');
-    const anoSelect = document.getElementById('anoComparar');
-    const btnAtualizar = document.getElementById('btnAtualizarComparacao');
-    const ctxCompar = document.getElementById('comparacaoContasChart').getContext('2d');
-    let comparacaoChart = null;
-
-    // Popula anos disponíveis
-    const anos = [{% for ano_opt in anos_disponiveis %}{{ ano_opt }}{% if not loop.last %}, {% endif %}{% endfor %}];
-    anos.forEach(a => {
-        const opt = document.createElement('option'); opt.value = a; opt.text = a; anoSelect.appendChild(opt);
-    });
-    // Seleciona o ano atual da página se existir
-    {% if ano %}
-    anoSelect.value = '{{ ano }}';
-    {% else %}
-    anoSelect.value = new Date().getFullYear();
-    {% endif %}
-
-    // Popula contas
-    const contasData = [
-        {% for c in todas_contas %}
-        { id: {{ c.id }}, nome: "{{ c.nome }}" }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ];
-    contasData.forEach(c => {
-        const o = document.createElement('option'); o.value = c.id; o.text = c.nome; contasSelect.appendChild(o);
-    });
-
-    function buildDatasets(accounts){
-        const colors = ['#4E79A7','#F28E2B','#E15759','#76B7B2','#59A14F','#EDC949','#AF7AA1','#FF9DA7','#9C755F','#BAB0AC'];
-        return accounts.map((acc, i) => ({
-            label: acc.nome,
-            data: acc.monthly.map(v => Number((v||0).toFixed(2))),
-            backgroundColor: acc.cor || colors[i % colors.length],
-            borderColor: '#ffffff',
-            borderWidth: 1
-        }));
-    }
-
-    async function fetchComparacao(){
-        const year = anoSelect.value;
-        const selected = Array.from(contasSelect.selectedOptions).map(o => o.value);
-        const params = new URLSearchParams();
-        params.set('year', year);
-        if(selected.length) params.set('contas', selected.join(','));
-
-        const res = await fetch('/api/comparar-contas-ano?' + params.toString(), { credentials: 'same-origin' });
-        if(!res.ok){ console.error('Erro ao carregar comparação', res.status); return; }
-        const data = await res.json();
-
-        const labels = data.months || [{% for m in meses %}'{{ m }}'{% if not loop.last %}, {% endif %}{% endfor %}];
-        const accounts = data.accounts || [];
-        // if no accounts selected and there are accounts, pre-select top 2 by absolute total
-        if(!selected.length && accounts.length){
-            const ordered = accounts.slice().sort((a,b) => Math.abs(b.total) - Math.abs(a.total));
-            const pre = ordered.slice(0, Math.min(2, ordered.length)).map(a => String(a.id));
-            // mark options selected
-            Array.from(contasSelect.options).forEach(opt => { opt.selected = pre.includes(opt.value); });
+    try {
+        if(typeof Chart === 'undefined'){
+            console.warn('[comparacaoContas] Chart.js não encontrado. Abortando inicialização.');
+            return;
         }
 
-        const datasets = buildDatasets(accounts);
+        const contasSelect = document.getElementById('contasSelect');
+        const anoSelect = document.getElementById('anoComparar');
+        const btnAtualizar = document.getElementById('btnAtualizarComparacao');
+        const canvas = document.getElementById('comparacaoContasChart');
+        if(!canvas){ console.warn('[comparacaoContas] canvas comparacaoContasChart não encontrado'); return; }
+        const ctxCompar = canvas.getContext('2d');
+    let comparacaoChart = null;
+    const statusElem = document.getElementById('comparacaoContasStatus');
 
-        if(comparacaoChart) comparacaoChart.destroy();
-        comparacaoChart = new Chart(ctxCompar, {
-            type: 'bar',
-            data: { labels, datasets },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        onClick: (e, legendItem, legend) => {
-                            // toggle dataset visibility
-                            const index = legendItem.datasetIndex;
-                            const ci = legend.chart;
-                            const meta = ci.getDatasetMeta(index);
-                            meta.hidden = meta.hidden === null ? !ci.data.datasets[index].hidden : null;
-                            ci.update();
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: ctx => ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
-                        }
+        // Popula anos disponíveis
+        const anos = [{% for ano_opt in anos_disponiveis %}{{ ano_opt }}{% if not loop.last %}, {% endif %}{% endfor %}];
+        if(anoSelect){
+            anos.forEach(a => { const opt = document.createElement('option'); opt.value = a; opt.text = a; anoSelect.appendChild(opt); });
+            {% if ano %}
+            anoSelect.value = '{{ ano }}';
+            {% else %}
+            anoSelect.value = new Date().getFullYear();
+            {% endif %}
+        }
+
+        // Popula contas
+        const contasData = [
+            {% for c in todas_contas %}
+            { id: {{ c.id }}, nome: "{{ c.nome }}", cor: "{{ c.cor or '' }}" }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+        if(contasSelect){
+            contasData.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.text = c.nome; contasSelect.appendChild(o); });
+        }
+
+        function buildDatasets(accounts){
+            const colors = ['#4E79A7','#F28E2B','#E15759','#76B7B2','#59A14F','#EDC949','#AF7AA1','#FF9DA7','#9C755F','#BAB0AC'];
+            return accounts.map((acc, i) => ({
+                label: acc.nome,
+                data: acc.monthly.map(v => Number((v||0).toFixed(2))),
+                backgroundColor: acc.cor || colors[i % colors.length],
+                borderColor: '#ffffff',
+                borderWidth: 1
+            }));
+        }
+
+        async function fetchComparacao(){
+            try{
+                const year = anoSelect ? anoSelect.value : (new Date().getFullYear());
+                const selected = contasSelect ? Array.from(contasSelect.selectedOptions).map(o => o.value) : [];
+                const params = new URLSearchParams(); params.set('year', year);
+                if(selected.length) params.set('contas', selected.join(','));
+
+                if(statusElem) statusElem.innerText = 'Carregando comparação de contas...';
+                console.debug('[comparacaoContas] fetching', params.toString());
+                const res = await fetch('/api/comparar-contas-ano?' + params.toString(), { credentials: 'same-origin' });
+                if(!res.ok){ console.error('[comparacaoContas] Erro ao carregar comparação', res.status); return; }
+                const data = await res.json();
+                console.debug('[comparacaoContas] response', data);
+                if(statusElem) statusElem.innerText = '';
+
+                if(data && data.success === false){
+                    console.warn('[comparacaoContas] API retornou erro', data.message);
+                    if(statusElem) statusElem.innerText = 'Erro na API: ' + (data.message || 'erro desconhecido');
+                    if(ctxCompar){ ctxCompar.clearRect(0,0,canvas.width, canvas.height); ctxCompar.fillStyle = '#666'; ctxCompar.font = '14px sans-serif'; ctxCompar.fillText('Erro ao carregar dados', 10, 30); }
+                    return;
+                }
+
+                const labels = data.months || [{% for m in meses %}'{{ m }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+                const accounts = data.accounts || [];
+                // if no accounts selected and there are accounts, pre-select top 2 by absolute total
+                if(contasSelect && !selected.length && accounts.length){
+                    const ordered = accounts.slice().sort((a,b) => Math.abs(b.total) - Math.abs(a.total));
+                    const pre = ordered.slice(0, Math.min(2, ordered.length)).map(a => String(a.id));
+                    Array.from(contasSelect.options).forEach(opt => { opt.selected = pre.includes(opt.value); });
+                }
+
+                const datasets = buildDatasets(accounts);
+                if(!datasets.length){
+                    // no data - render friendly message on canvas and return
+                    if(statusElem) statusElem.innerText = 'Nenhuma conta ou dados disponíveis para o ano selecionado.';
+                    if(ctxCompar){
+                        ctxCompar.clearRect(0,0,canvas.width, canvas.height);
+                        ctxCompar.fillStyle = '#666';
+                        ctxCompar.font = '14px sans-serif';
+                        ctxCompar.textBaseline = 'top';
+                        ctxCompar.fillText('Nenhuma conta ou dados disponíveis para o ano selecionado.', 10, 10);
                     }
-                },
-                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2}) } } }
-            }
-        });
-    }
+                    return;
+                }
 
-    btnAtualizar.addEventListener('click', fetchComparacao);
-    // Inicializar no carregamento
-    document.addEventListener('DOMContentLoaded', fetchComparacao);
+                if(comparacaoChart) comparacaoChart.destroy();
+                comparacaoChart = new Chart(ctxCompar, {
+                    type: 'bar',
+                    data: { labels, datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        onClick: (e, legendItem, legend) => {
+                                            const ci = legend.chart;
+                                            const idx = legendItem.datasetIndex;
+                                            const visible = ci.isDatasetVisible(idx);
+                                            ci.setDatasetVisibility(idx, !visible);
+                                            ci.update();
+                                        }
+                                    }
+                                    if(statusElem) statusElem.innerText = '';
+                                    tooltip: {
+                                        callbacks: {
+                                            label: ctx => ctx.dataset.label + ': R$ ' + Number(ctx.parsed.y).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})
+                                        }
+                                    }
+                                },
+                        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2}) } } }
+                    }
+                });
+            }catch(err){ console.error('[comparacaoContas] Erro em fetchComparacao', err); }
+        }
+
+        if(btnAtualizar) btnAtualizar.addEventListener('click', () => { fetchComparacao().catch(e => console.error(e)); });
+        // Inicializar quando DOM estiver pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => fetchComparacao().catch(e => console.error('[comparacaoContas] falha inicial', e)));
+        } else {
+            // já pronto
+            fetchComparacao().catch(e => console.error('[comparacaoContas] falha inicial', e));
+        }
+
+    } catch(e){ console.error('[comparacaoContas] erro inicializando', e); }
 })();
 </script>
 {% endblock %}
