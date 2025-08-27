@@ -2197,10 +2197,21 @@ def relatorios():
                     categoria_raiz_nome = cat.nome
         except Exception:
             categoria_raiz_nome = getattr(cat, 'nome', '') if cat else ''
-
         # Normalizar descrição para agrupar independentemente de caixa/espacos
         raw_desc = (getattr(t, 'descricao', '') or '').strip()
-        norm_desc = ' '.join(raw_desc.split()).lower()
+        # Remover sufixos comuns de parcela (ex: ' - Parcela 1/8', 'Parcela-1/8', 'Parcela 1 de 8')
+        import re
+        cleaned_desc = raw_desc
+        # padrão principal: 'parcela X/Y' possivelmente precedido por '-' ou similar
+        cleaned_desc = re.sub(r"(?i)\s*(?:[-–—])?\s*parcela\s*\d+\s*[\\/\-]\s*\d+", "", cleaned_desc)
+        # padrão alternativo: 'parcela X de Y' ou 'parcela X of Y'
+        cleaned_desc = re.sub(r"(?i)\s*(?:[-–—])?\s*parcela\s*\d+\s*(?:de|of)\s*\d+", "", cleaned_desc)
+        # remover termos isolados como 'parcela X' no final
+        cleaned_desc = re.sub(r"(?i)\s*(?:[-–—])?\s*parcela\s*\d+\s*$", "", cleaned_desc)
+        # limpar espaços redundantes e traços finais
+        cleaned_desc = cleaned_desc.strip().rstrip('-').strip()
+
+        norm_desc = ' '.join(cleaned_desc.split()).lower()
 
         chave = (norm_desc, categoria_raiz_nome or '', subcategoria_nome or '')
 
@@ -2208,8 +2219,8 @@ def relatorios():
             # inicializar mapa mensal com zeros para todos os meses
             monthly = {m: 0 for m in meses}
             grupos[chave] = {
-                # descrição exibida: preferir a versão não projetada quando disponível
-                'descricao': raw_desc,
+                # descrição exibida: usar a versão limpa (sem texto de parcela) para agrupar
+                'descricao': cleaned_desc or raw_desc,
                 'categoria_raiz': categoria_raiz_nome or '',
                 'subcategoria': subcategoria_nome or '',
                 'monthly': monthly,
