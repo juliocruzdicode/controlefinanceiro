@@ -647,7 +647,22 @@ function exportarExcel() {
         const data = await res.json();
 
         const labels = data.months || [{% for m in meses %}'{{ m }}'{% if not loop.last %}, {% endif %}{% endfor %}];
-        const datasets = buildDatasets(data.accounts || []);
+        const accounts = data.accounts || [];
+        // Transform accounts: keep only despesas (negative) and convert to positive numbers for display
+        const expensesOnly = accounts.map(acc => {
+            const monthly = (acc.monthly || []).map(v => (Number(v) < 0 ? Math.abs(Number(v)) : 0));
+            const total = monthly.reduce((s, x) => s + x, 0);
+            return Object.assign({}, acc, { monthly, total });
+        });
+
+        // if no accounts selected and there are accounts, pre-select top 2 by expense total
+        if(!selected.length && expensesOnly.length){
+            const ordered = expensesOnly.slice().sort((a,b) => b.total - a.total);
+            const pre = ordered.slice(0, Math.min(2, ordered.length)).map(a => String(a.id));
+            Array.from(contasSelect.options).forEach(opt => { opt.selected = pre.includes(opt.value); });
+        }
+
+        const datasets = buildDatasets(expensesOnly);
 
         if(comparacaoChart) comparacaoChart.destroy();
         comparacaoChart = new Chart(ctxCompar, {
