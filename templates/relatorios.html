@@ -401,7 +401,7 @@ thead th {
     color: #212529; /* texto escuro */
     position: sticky;
     top: 0;
-    z-index: 100; /* manter o cabeçalho acima de colunas sticky */
+    z-index: 300; /* manter o cabeçalho acima de colunas sticky */
 }
 
 /* Cabeçalho específico para coluna de descrição (manter acima da primeira coluna fixa) */
@@ -418,8 +418,8 @@ thead th {
 
 /* Garantir que a primeira coluna fique acima do conteúdo quando rolar horizontalmente */
 .sticky-left {
-    z-index: 90; /* menor que o cabeçalho, maior que linhas normais */
-    background-color: #ffffff; /* reforçar fundo sólido para cobrir textos por baixo */
+    z-index: 220; /* acima das células normais para se sobrepor quando necessário */
+    background-color: inherit; /* herdar o fundo da linha (permite zebra/section colors) */
 }
 
 /* Fazer a coluna de descrição (primeira coluna) sticky à esquerda */
@@ -428,8 +428,8 @@ thead th {
 .sticky-left {
     position: sticky;
     left: 0;
-    z-index: 90; /* abaixo do header, acima das células normais */
-    background: transparent; /* let row zebra show through for first column */
+    z-index: 220; /* abaixo do header, acima das células normais */
+    background: inherit; /* mostrar o fundo da linha (zebra ou section) e cobrir colunas sobrepostas */
     border-right: 2px solid #dee2e6;
 }
 
