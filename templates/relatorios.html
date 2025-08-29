@@ -138,18 +138,14 @@
                                     {% for mes in meses %}
                                         {% set soma_real = receitas_real_monthly.get(mes, 0) | float %}
                                         {% set soma_proj = receitas_proj_monthly.get(mes, 0) | float %}
+                                        {% set soma_comb = (soma_real + soma_proj) %}
                                         <td class="text-end">
-                                            R$ {{ "%.2f"|format(soma_real) }}
-                                            {% if soma_proj > 0 %}
-                                                <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(soma_proj) }}</span>
-                                            {% endif %}
+                                            R$ {{ "%.2f"|format(soma_comb) }}
                                         </td>
                                     {% endfor %}
+                                    {% set total_receitas_comb = (total_receitas_real_calc + total_receitas_proj_calc) %}
                                     <td class="text-end bg-success text-white">
-                                        R$ {{ "%.2f"|format(total_receitas_real_calc) }}
-                                        {% if total_receitas_proj_calc > 0 %}
-                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(total_receitas_proj_calc) }}</span>
-                                        {% endif %}
+                                        R$ {{ "%.2f"|format(total_receitas_comb) }}
                                     </td>
                                 </tr>
 
@@ -184,18 +180,14 @@
                                     {% for mes in meses %}
                                         {% set soma_real = despesas_real_monthly.get(mes, 0) | float %}
                                         {% set soma_proj = despesas_proj_monthly.get(mes, 0) | float %}
+                                        {% set soma_comb = (soma_real + soma_proj) %}
                                         <td class="text-end">
-                                            R$ {{ "%.2f"|format(soma_real) }}
-                                            {% if soma_proj > 0 %}
-                                                <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(soma_proj) }}</span>
-                                            {% endif %}
+                                            R$ {{ "%.2f"|format(soma_comb) }}
                                         </td>
                                     {% endfor %}
+                                    {% set total_despesas_comb = (total_despesas_real_calc + total_despesas_proj_calc) %}
                                     <td class="text-end bg-danger text-white">
-                                        R$ {{ "%.2f"|format(total_despesas_real_calc) }}
-                                        {% if total_despesas_proj_calc > 0 %}
-                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(total_despesas_proj_calc) }}</span>
-                                        {% endif %}
+                                        R$ {{ "%.2f"|format(total_despesas_comb) }}
                                     </td>
                                 </tr>
 
@@ -232,17 +224,12 @@
                                         {% set saldo_proj = saldo_proj_monthly.get(mes, 0) | float %}
                                         {% set valor = saldo_real + saldo_proj %}
                                         <td class="text-end {% if valor >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                            R$ {{ "%.2f"|format(saldo_real) }}
-                                            {% if saldo_proj != 0 %}
-                                                <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(saldo_proj) }}</span>
-                                            {% endif %}
+                                            R$ {{ "%.2f"|format(valor) }}
                                         </td>
                                     {% endfor %}
+                                    {% set saldo_total_comb = (saldo_total_real_calc + saldo_total_proj_calc) %}
                                     <td class="text-end bg-info text-white">
-                                        R$ {{ "%.2f"|format(saldo_total_real_calc) }}
-                                        {% if saldo_total_proj_calc != 0 %}
-                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(saldo_total_proj_calc) }}</span>
-                                        {% endif %}
+                                        R$ {{ "%.2f"|format(saldo_total_comb) }}
                                     </td>
                                 </tr>
                             {% else %}
