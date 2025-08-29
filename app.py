@@ -2205,14 +2205,18 @@ def relatorios():
         chave = (norm_desc, categoria_raiz_nome or '', subcategoria_nome or '')
 
         if chave not in grupos:
-            # inicializar mapa mensal com zeros para todos os meses
+            # inicializar mapas mensais (total, real e projetado) com zeros para todos os meses
             monthly = {m: 0 for m in meses}
+            monthly_real = {m: 0 for m in meses}
+            monthly_proj = {m: 0 for m in meses}
             grupos[chave] = {
                 # descrição exibida: usar a versão limpa (sem texto de parcela) para agrupar
                 'descricao': cleaned_desc or raw_desc,
                 'categoria_raiz': categoria_raiz_nome or '',
                 'subcategoria': subcategoria_nome or '',
                 'monthly': monthly,
+                'monthly_real': monthly_real,
+                'monthly_proj': monthly_proj,
                 'total': 0,
                 'is_projetada': getattr(t, 'is_projetada', False)
             }
@@ -2225,8 +2229,14 @@ def relatorios():
 
         # somar valor no mês correto (se o mês estiver dentro do período)
         if month_label and month_label in grupos[chave]['monthly']:
+            # sempre atualizar o total combinado
             grupos[chave]['monthly'][month_label] += t.valor
             grupos[chave]['total'] += t.valor
+            # e também atualizar as partições real vs projetada
+            if getattr(t, 'is_projetada', False):
+                grupos[chave]['monthly_proj'][month_label] += t.valor
+            else:
+                grupos[chave]['monthly_real'][month_label] += t.valor
         else:
             # valores fora do período somam para o total geral
             grupos[chave]['total'] += t.valor
