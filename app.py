@@ -1961,8 +1961,27 @@ def relatorios():
                 if conta_filter_val is not None:
                     if getattr(p, 'conta_id', None) != conta_filter_val:
                         continue
-                p.is_projetada = True
-                filtered_projecoes.append(p)
+                # Não adicionar o objeto Transacao transient ao contexto do SQLAlchemy
+                # para evitar SAWarning. Em vez disso, criar um objeto simples com os
+                # atributos necessários para os cálculos e renderização.
+                from types import SimpleNamespace
+                proj_obj = SimpleNamespace(
+                    descricao=getattr(p, 'descricao', None),
+                    valor=getattr(p, 'valor', 0),
+                    tipo=getattr(p, 'tipo', None),
+                    data_transacao=getattr(p, 'data_transacao', None),
+                    categoria_id=getattr(p, 'categoria_id', None),
+                    conta_id=getattr(p, 'conta_id', None),
+                    recorrencia_id=getattr(p, 'recorrencia_id', None),
+                    is_projetada=True
+                )
+                # garantir que tipo seja Enum TipoTransacao quando possível
+                try:
+                    if isinstance(proj_obj.tipo, str):
+                        proj_obj.tipo = TipoTransacao(proj_obj.tipo)
+                except Exception:
+                    pass
+                filtered_projecoes.append(proj_obj)
 
             transacoes_projetadas.extend(filtered_projecoes)
 

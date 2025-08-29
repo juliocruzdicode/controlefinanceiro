@@ -558,21 +558,23 @@ class TransacaoRecorrente(db.Model):
                 descricao_proj = self.descricao
                 if self.is_parcelada and numero_parcela is not None:
                     descricao_proj += f" - Parcela {numero_parcela}/{self.total_parcelas}"
-                projecao = Transacao(
+                # Criar objeto leve (não-SQLAlchemy) para representar projeção
+                # Evita criar instâncias Transacao transitórias que se liguem a
+                # relações (categoria/conta) e gerem SAWarning durante queries.
+                from types import SimpleNamespace
+                projecao = SimpleNamespace(
                     id=-(100000 + self.id*1000 + iteracoes),
                     descricao=descricao_proj,
                     valor=self.valor,
                     tipo=self.tipo,
                     data_transacao=proxima_data,
                     categoria_id=self.categoria_id,
-                    forma_pagamento=self.forma_pagamento,
+                    forma_pagamento=getattr(self, 'forma_pagamento', None),
                     conta_id=self.conta_id,
                     recorrencia_id=self.id,
-                    user_id=self.user_id
+                    user_id=self.user_id,
+                    is_projetada=True
                 )
-                projecao.is_projetada = True
-                projecao.categoria = self.categoria
-                projecao.conta = self.conta
                 print(f"Nova projeção criada: {projecao.descricao} - {projecao.data_transacao}")
                 transacoes_geradas.append(projecao)
             else:
