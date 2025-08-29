@@ -2233,14 +2233,21 @@ def relatorios():
 
         # somar valor no mês correto (se o mês estiver dentro do período)
         if month_label and month_label in grupos[chave]['monthly']:
-            # sempre atualizar o total combinado
-            grupos[chave]['monthly'][month_label] += t.valor
-            grupos[chave]['total'] += t.valor
-            # e também atualizar as partições real vs projetada
+            # determinar valor com sinal consistente: receitas positivas, despesas negativas
+            try:
+                is_receita = (t.tipo == TipoTransacao.RECEITA)
+            except Exception:
+                # fallback: se tipo não estiver disponível, inferir pelo sinal do valor
+                is_receita = (t.valor >= 0)
+            signed_val = (t.valor if is_receita else -t.valor)
+            # sempre atualizar o total combinado (receitas positivas, despesas negativas)
+            grupos[chave]['monthly'][month_label] += signed_val
+            grupos[chave]['total'] += signed_val
+            # e também atualizar as partições real vs projetada (usar signed_val)
             if getattr(t, 'is_projetada', False):
-                grupos[chave]['monthly_proj'][month_label] += t.valor
+                grupos[chave]['monthly_proj'][month_label] += signed_val
             else:
-                grupos[chave]['monthly_real'][month_label] += t.valor
+                grupos[chave]['monthly_real'][month_label] += signed_val
         else:
             # valores fora do período somam para o total geral
             grupos[chave]['total'] += t.valor
