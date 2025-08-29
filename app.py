@@ -1662,6 +1662,25 @@ def editar_transacao(transacao_id):
     """Edita uma transação existente"""
     transacao = Transacao.query.filter_by(id=transacao_id, user_id=current_user.id).first_or_404()
     form = TransacaoForm(obj=transacao, user_id=current_user.id)
+
+    # Garantir que os choices de categoria e conta estejam filtrados pelo usuário
+    # (o form.__init__ pode não aplicar o filtro de usuário para contas em todas as versões)
+    form.categoria_id.choices = []
+    categorias_raiz = Categoria.query.filter_by(parent_id=None, user_id=current_user.id).all()
+
+    def add_categoria_choices(categoria, prefix=""):
+        display_name = f"{prefix}{categoria.nome}"
+        form.categoria_id.choices.append((categoria.id, display_name))
+        for subcategoria in categoria.subcategorias:
+            if subcategoria.user_id == current_user.id:
+                add_categoria_choices(subcategoria, f"{prefix}└─ ")
+
+    for categoria in categorias_raiz:
+        add_categoria_choices(categoria)
+
+    # Popular contas do usuário para o select (permitir alteração de conta)
+    contas_ativas = Conta.query.filter_by(ativa=True, user_id=current_user.id).all()
+    form.conta_id.choices = [(conta.id, conta.nome) for conta in contas_ativas]
     
     # Configurar valores iniciais para campos específicos
     if request.method == 'GET':
@@ -2943,6 +2962,23 @@ def editar_transacao_recorrente(recorrente_id):
     """Edita uma transação recorrente"""
     recorrente = TransacaoRecorrente.query.filter_by(id=recorrente_id, user_id=current_user.id).first_or_404()
     form = TransacaoRecorrenteForm(obj=recorrente, user_id=current_user.id)
+
+    # Garantir choices de categoria e conta do usuário para o formulário de edição
+    form.categoria_id.choices = []
+    categorias_raiz = Categoria.query.filter_by(parent_id=None, user_id=current_user.id).all()
+
+    def add_categoria_choices_rec(categoria, prefix=""):
+        display_name = f"{prefix}{categoria.nome}"
+        form.categoria_id.choices.append((categoria.id, display_name))
+        for subcategoria in categoria.subcategorias:
+            if subcategoria.user_id == current_user.id:
+                add_categoria_choices_rec(subcategoria, f"{prefix}└─ ")
+
+    for categoria in categorias_raiz:
+        add_categoria_choices_rec(categoria)
+
+    contas_ativas = Conta.query.filter_by(ativa=True, user_id=current_user.id).all()
+    form.conta_id.choices = [(conta.id, conta.nome) for conta in contas_ativas]
     
     # Carregar opções filtradas por usuário
     categorias = Categoria.query.filter_by(user_id=current_user.id).all()
