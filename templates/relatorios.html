@@ -400,7 +400,7 @@ thead th {
     color: #212529; /* texto escuro */
     position: sticky;
     top: 0;
-    z-index: 20; /* acima das linhas */
+    z-index: 100; /* manter o cabeçalho acima de colunas sticky */
 }
 
 /* Cabeçalho específico para coluna de descrição (manter acima da primeira coluna fixa) */
@@ -417,8 +417,18 @@ thead th {
 
 /* Garantir que a primeira coluna fique acima do conteúdo quando rolar horizontalmente */
 .sticky-left {
-    z-index: 30; /* maior que cabeçalho de célula para sobrepor o conteúdo */
+    z-index: 90; /* menor que o cabeçalho, maior que linhas normais */
     background-color: #ffffff; /* reforçar fundo sólido para cobrir textos por baixo */
+}
+
+/* Tornar a última coluna (Total) sticky à direita para ficar visível ao rolar */
+#relatorioTable th:last-child,
+#relatorioTable td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 90; /* abaixo do header, acima das células normais */
+    background-color: #ffffff;
+    border-left: 2px solid #dee2e6;
 }
 
 .table-responsive {
@@ -453,6 +463,16 @@ thead th {
     vertical-align: middle;
     font-size: 0.875rem;
 }
+    .table th, .table td {
+        white-space: nowrap;
+        vertical-align: middle;
+        font-size: 0.875rem;
+    }
+
+    /* Allow the description column to wrap even though table cells default to nowrap */
+    .table td.descricao-cell {
+        white-space: normal;
+    }
 
 .table tbody tr:hover {
     background-color: rgba(0,123,255,0.1);
