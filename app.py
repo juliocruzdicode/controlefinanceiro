@@ -2330,6 +2330,31 @@ def api_comparar_contas_ano():
             Transacao.data_transacao <= periodo_fim
         ).all()
 
+        # Also include projected transactions from recorrentes so the chart reflects projections
+        try:
+            # determine months ahead needed from today to include the target year
+            hoje = datetime.utcnow()
+            meses_needed = max(0, (year - hoje.year) * 12 + (12 - hoje.month) + 1)
+
+            # fetch recorrentes (optionally filter by contas if provided)
+            recorrentes_q = TransacaoRecorrente.query.filter_by(user_id=current_user.id)
+            if contas_param and 'conta_ids' in locals():
+                recorrentes_q = recorrentes_q.filter(TransacaoRecorrente.conta_id.in_(conta_ids))
+            recorrentes = recorrentes_q.all()
+
+            for recorrente in recorrentes:
+                try:
+                    proj = recorrente.gerar_transacoes_pendentes(meses_futuros=meses_needed, apenas_projetar=True)
+                    # filtrar apenas as projeções que caem dentro do ano solicitado
+                    for p in proj:
+                        if p and hasattr(p, 'data_transacao') and periodo_inicio <= p.data_transacao <= periodo_fim:
+                            transacoes.append(p)
+                except Exception:
+                    # segurança: não falhar toda a API por problema em uma recorrência
+                    app.logger.exception('Erro ao gerar projeções para recorrente %s', getattr(recorrente, 'id', None))
+        except Exception:
+            app.logger.exception('Erro ao coletar projeções de recorrentes')
+
         # Prepare months labels
         meses_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         months = [f"{meses_pt[m-1]} {year}" for m in range(1,13)]
