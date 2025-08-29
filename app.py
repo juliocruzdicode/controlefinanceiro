@@ -2202,7 +2202,10 @@ def relatorios():
 
         norm_desc = ' '.join(cleaned_desc.split()).lower()
 
-        chave = (norm_desc, categoria_raiz_nome or '', subcategoria_nome or '')
+        # incluir tipo na chave para evitar misturar receitas e despesas com a mesma descrição
+        tipo_nome = getattr(t, 'tipo', None)
+        tipo_nome = tipo_nome.value if tipo_nome is not None else ''
+        chave = (norm_desc, categoria_raiz_nome or '', subcategoria_nome or '', tipo_nome)
 
         if chave not in grupos:
             # inicializar mapas mensais (total, real e projetado) com zeros para todos os meses
@@ -2214,6 +2217,7 @@ def relatorios():
                 'descricao': cleaned_desc or raw_desc,
                 'categoria_raiz': categoria_raiz_nome or '',
                 'subcategoria': subcategoria_nome or '',
+                'tipo': tipo_nome,
                 'monthly': monthly,
                 'monthly_real': monthly_real,
                 'monthly_proj': monthly_proj,
