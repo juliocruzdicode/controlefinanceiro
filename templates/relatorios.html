@@ -421,14 +421,15 @@ thead th {
     background-color: #ffffff; /* reforçar fundo sólido para cobrir textos por baixo */
 }
 
-/* Tornar a última coluna (Total) sticky à direita para ficar visível ao rolar */
-#relatorioTable th:last-child,
-#relatorioTable td:last-child {
+/* Fazer a coluna de descrição (primeira coluna) sticky à esquerda */
+#relatorioTable th:first-child,
+#relatorioTable td:first-child,
+.sticky-left {
     position: sticky;
-    right: 0;
+    left: 0;
     z-index: 90; /* abaixo do header, acima das células normais */
     background-color: #ffffff;
-    border-left: 2px solid #dee2e6;
+    border-right: 2px solid #dee2e6;
 }
 
 .table-responsive {
