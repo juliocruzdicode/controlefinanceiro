@@ -2543,9 +2543,9 @@ def dados_grafico():
     ).join(Transacao).filter(*base_filter).group_by(Categoria.nome, Categoria.cor).all()
     
     dados_categoria = {
-        'labels': [r[0] for r in resultado],
-        'data': [float(r[2]) for r in resultado],
-        'colors': [r[1] for r in resultado]
+    'labels': [r[0] for r in resultado],
+    'data': [float(r[2]) if r[2] is not None else 0.0 for r in resultado],
+    'colors': [r[1] for r in resultado]
     }
     
     # Dados mensais (filtrados por usuário)
@@ -2561,12 +2561,15 @@ def dados_grafico():
         mes, tipo, valor = registro
         if mes not in meses:
             meses[mes] = {'receitas': 0, 'despesas': 0}
-        meses[mes][f'{tipo.value}s'] = float(valor)
+        # valor pode ser None dependendo do banco; tratar como 0.0
+        meses[mes][f'{tipo.value}s'] = float(valor) if valor is not None else 0.0
     
+    # Garantir ordenação cronológica dos meses
+    meses_ordenados = sorted(meses.keys())
     dados_tempo = {
-        'labels': list(meses.keys()),
-        'receitas': [meses[m]['receitas'] for m in meses.keys()],
-        'despesas': [meses[m]['despesas'] for m in meses.keys()]
+        'labels': meses_ordenados,
+        'receitas': [meses[m]['receitas'] for m in meses_ordenados],
+        'despesas': [meses[m]['despesas'] for m in meses_ordenados]
     }
     
     return jsonify({
