@@ -450,6 +450,20 @@ thead th {
     background-color: inherit;
 }
 
+/* Force light background colors for section rows so they override zebra striping */
+.table tbody tr.table-success td,
+.table tbody tr.table-success th {
+    background-color: #d4edda !important; /* light green */
+}
+.table tbody tr.table-danger td,
+.table tbody tr.table-danger th {
+    background-color: #f8d7da !important; /* light red */
+}
+.table tbody tr.table-info td,
+.table tbody tr.table-info th {
+    background-color: #d1ecf1 !important; /* light blue */
+}
+
 .table-responsive {
     max-height: 70vh;
     overflow-x: auto;
