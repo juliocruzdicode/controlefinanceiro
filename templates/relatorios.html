@@ -144,7 +144,7 @@
                                         </td>
                                     {% endfor %}
                                     {% set total_receitas_comb = (total_receitas_real_calc + total_receitas_proj_calc) %}
-                                    <td class="text-end bg-success text-white">
+                                    <td class="text-end bg-success text-black">
                                         R$ {{ "%.2f"|format(total_receitas_comb) }}
                                     </td>
                                 </tr>
@@ -228,7 +228,7 @@
                                         </td>
                                     {% endfor %}
                                     {% set saldo_total_comb = (saldo_total_real_calc + saldo_total_proj_calc) %}
-                                    <td class="text-end bg-info text-white">
+                                    <td class="text-end bg-info text-black">
                                         R$ {{ "%.2f"|format(saldo_total_comb) }}
                                     </td>
                                 </tr>
