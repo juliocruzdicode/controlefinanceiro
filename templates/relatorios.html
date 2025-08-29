@@ -165,8 +165,7 @@
                                             {% endif %}
                                         </td>
                                         {% endfor %}
-                                        <td class="text-end {% if g.total|float > 0 %}text-success{% elif g.total|float < 0 %}text-danger{% endif %}">
-                                            R$ {{ "%.2f"|format(g.total|float) }}</td>
+                                        <td class="text-end">R$ {{ "%.2f"|format(g.total|float) }}</td>
                                     </tr>
                                 {% endfor %}
 
@@ -208,8 +207,7 @@
                                             {% endif %}
                                         </td>
                                         {% endfor %}
-                                        <td class="text-end {% if g.total|float < 0 %}text-danger{% elif g.total|float > 0 %}text-success{% endif %}">
-                                            R$ {{ "%.2f"|format((-g.total)|float) }}</td>
+                                        <td class="text-end">R$ {{ "%.2f"|format((-g.total)|float) }}</td>
                                     </tr>
                                 {% endfor %}
 
