@@ -428,8 +428,19 @@ thead th {
     position: sticky;
     left: 0;
     z-index: 90; /* abaixo do header, acima das células normais */
-    background-color: #ffffff;
+    background: transparent; /* let row zebra show through for first column */
     border-right: 2px solid #dee2e6;
+}
+
+/* Apply zebra striping specifically to the first column cells so sticky cell colors match the row */
+.table tbody tr:not(.section-header):nth-child(even) td:first-child,
+.table tbody tr:not(.section-header):nth-child(even) th:first-child {
+    background-color: #f0f1f3;
+}
+
+/* Ensure section headers (RECEITAS/DESPESAS/SALDO) keep their bold background on first column */
+.table tbody tr.section-header td:first-child {
+    background: transparent; /* section header uses full-row classes like table-success/table-danger */
 }
 
 .table-responsive {
