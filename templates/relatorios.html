@@ -130,24 +130,118 @@
                         <tbody>
                             {# Novo: renderizar linhas por transação se disponível #}
                             {% if transacoes_linhas is defined and transacoes_linhas %}
-                                {% for g in transacoes_linhas %}
-                                <tr {% if g.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
-                                    <td class="sticky-left ps-3 descricao-cell">{{ g.descricao or '-' }}</td>
-                                    <td>{{ g.categoria_raiz or '-' }}</td>
-                                    <td>{{ g.subcategoria or '-' }}</td>
+                                {# Receitas section #}
+                                <tr class="table-success fw-bold">
+                                    <td class="sticky-left"><i class="fas fa-plus-circle"></i> RECEITAS</td>
                                     {% for mes in meses %}
-                                    <td class="text-end">
-                                        {% set val = g.monthly.get(mes, 0) %}
-                                        {% if val %}
-                                            R$ {{ "%.2f"|format(val|float) }}
-                                        {% else %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
+                                        {% set soma = 0 %}
+                                        {% for g in transacoes_linhas %}
+                                            {% set val = g.monthly.get(mes, 0) | float %}
+                                            {% if val > 0 %}
+                                                {% set soma = soma + val %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        <td class="text-end">R$ {{ "%.2f"|format(soma) }}</td>
                                     {% endfor %}
-                                    <td class="text-end">R$ {{ "%.2f"|format(g.total|float) }}</td>
+                                    {% set total_receitas_sum = 0 %}
+                                    {% for g in transacoes_linhas %}
+                                        {% if g.total|float > 0 %}
+                                            {% set total_receitas_sum = total_receitas_sum + (g.total|float) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <td class="text-end bg-success text-white">R$ {{ "%.2f"|format(total_receitas_sum) }}</td>
                                 </tr>
+
+                                {# List itemized receitas #}
+                                {% for g in transacoes_linhas %}
+                                    {% if g.total|float > 0 %}
+                                    <tr {% if g.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
+                                        <td class="sticky-left ps-3 descricao-cell">{{ g.descricao or '-' }}</td>
+                                        <td>{{ g.categoria_raiz or '-' }}</td>
+                                        <td>{{ g.subcategoria or '-' }}</td>
+                                        {% for mes in meses %}
+                                        {% set val = g.monthly.get(mes, 0) | float %}
+                                        <td class="text-end">
+                                            {% if val > 0 %}
+                                                R$ {{ "%.2f"|format(val) }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                        <td class="text-end">R$ {{ "%.2f"|format(g.total|float) }}</td>
+                                    </tr>
+                                    {% endif %}
                                 {% endfor %}
+
+                                <!-- Espaçador -->
+                                <tr><td colspan="{{ meses|length + 3 }}" class="p-1"></td></tr>
+
+                                {# Despesas section #}
+                                <tr class="table-danger fw-bold">
+                                    <td class="sticky-left"><i class="fas fa-minus-circle"></i> DESPESAS</td>
+                                    {% for mes in meses %}
+                                        {% set soma = 0 %}
+                                        {% for g in transacoes_linhas %}
+                                            {% set val = g.monthly.get(mes, 0) | float %}
+                                            {% if val < 0 %}
+                                                {% set soma = soma + (-val) %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        <td class="text-end">R$ {{ "%.2f"|format(soma) }}</td>
+                                    {% endfor %}
+                                    {% set total_despesas_sum = 0 %}
+                                    {% for g in transacoes_linhas %}
+                                        {% if g.total|float < 0 %}
+                                            {% set total_despesas_sum = total_despesas_sum + (-g.total|float) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <td class="text-end bg-danger text-white">R$ {{ "%.2f"|format(total_despesas_sum) }}</td>
+                                </tr>
+
+                                {# List itemized despesas #}
+                                {% for g in transacoes_linhas %}
+                                    {% if g.total|float < 0 %}
+                                    <tr {% if g.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
+                                        <td class="sticky-left ps-3 descricao-cell">{{ g.descricao or '-' }}</td>
+                                        <td>{{ g.categoria_raiz or '-' }}</td>
+                                        <td>{{ g.subcategoria or '-' }}</td>
+                                        {% for mes in meses %}
+                                        {% set val = g.monthly.get(mes, 0) | float %}
+                                        <td class="text-end">
+                                            {% if val < 0 %}
+                                                R$ {{ "%.2f"|format((-val)) }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                        <td class="text-end">R$ {{ "%.2f"|format((-g.total)|float) }}</td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <!-- Espaçador -->
+                                <tr><td colspan="{{ meses|length + 3 }}" class="p-1"></td></tr>
+
+                                {# SALDO MENSAL #}
+                                <tr class="table-info fw-bold">
+                                    <td class="sticky-left"><i class="fas fa-equals"></i> SALDO MENSAL</td>
+                                    {% for mes in meses %}
+                                        {% set saldo_mes = 0 %}
+                                        {% for g in transacoes_linhas %}
+                                            {% set saldo_mes = saldo_mes + (g.monthly.get(mes, 0) | float) %}
+                                        {% endfor %}
+                                        <td class="text-end {% if saldo_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                            R$ {{ "%.2f"|format(saldo_mes) }}
+                                        </td>
+                                    {% endfor %}
+                                    {% set saldo_total = 0 %}
+                                    {% for g in transacoes_linhas %}
+                                        {% set saldo_total = saldo_total + (g.total|float) %}
+                                    {% endfor %}
+                                    <td class="text-end bg-info text-white">R$ {{ "%.2f"|format(saldo_total) }}</td>
+                                </tr>
                             {% else %}
                                 {# Fallback: manter agregados por categoria como antes #}
                                 {% if tipo == 'todos' or tipo == 'receita' %}
