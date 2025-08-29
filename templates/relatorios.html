@@ -130,24 +130,14 @@
                         <tbody>
                             {# Novo: renderizar linhas por transação se disponível #}
                             {% if transacoes_linhas is defined and transacoes_linhas %}
-                                {# Receitas section #}
+                                {# Receitas section (usando agregados pré-computados) #}
                                 <tr class="table-success fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-plus-circle"></i> RECEITAS</td>
                                     <td></td>
                                     <td></td>
                                     {% for mes in meses %}
-                                        {% set soma_real = 0 %}
-                                        {% set soma_proj = 0 %}
-                                        {% for g in transacoes_linhas %}
-                                            {% set val = g.monthly.get(mes, 0) | float %}
-                                            {% if val > 0 %}
-                                                {% if g.is_projetada %}
-                                                    {% set soma_proj = soma_proj + val %}
-                                                {% else %}
-                                                    {% set soma_real = soma_real + val %}
-                                                {% endif %}
-                                            {% endif %}
-                                        {% endfor %}
+                                        {% set soma_real = receitas_real_monthly.get(mes, 0) | float %}
+                                        {% set soma_proj = receitas_proj_monthly.get(mes, 0) | float %}
                                         <td class="text-end">
                                             R$ {{ "%.2f"|format(soma_real) }}
                                             {% if soma_proj > 0 %}
@@ -155,28 +145,16 @@
                                             {% endif %}
                                         </td>
                                     {% endfor %}
-                                    {% set total_receitas_real = 0 %}
-                                    {% set total_receitas_proj = 0 %}
-                                    {% for g in transacoes_linhas %}
-                                        {% if g.total|float > 0 %}
-                                            {% if g.is_projetada %}
-                                                {% set total_receitas_proj = total_receitas_proj + (g.total|float) %}
-                                            {% else %}
-                                                {% set total_receitas_real = total_receitas_real + (g.total|float) %}
-                                            {% endif %}
-                                        {% endif %}
-                                    {% endfor %}
                                     <td class="text-end bg-success text-white">
-                                        R$ {{ "%.2f"|format(total_receitas_real) }}
-                                        {% if total_receitas_proj > 0 %}
-                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(total_receitas_proj) }}</span>
+                                        R$ {{ "%.2f"|format(total_receitas_real_calc) }}
+                                        {% if total_receitas_proj_calc > 0 %}
+                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(total_receitas_proj_calc) }}</span>
                                         {% endif %}
                                     </td>
                                 </tr>
 
                                 {# List itemized receitas #}
-                                {% for g in transacoes_linhas %}
-                                    {% if g.total|float > 0 %}
+                                {% for g in receitas_linhas %}
                                     <tr {% if g.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
                                         <td class="sticky-left ps-3 descricao-cell">{{ g.descricao or '-' }}</td>
                                         <td>{{ g.categoria_raiz or '-' }}</td>
@@ -193,30 +171,19 @@
                                         {% endfor %}
                                         <td class="text-end">R$ {{ "%.2f"|format(g.total|float) }}</td>
                                     </tr>
-                                    {% endif %}
                                 {% endfor %}
 
                                 <!-- Espaçador -->
                                 <tr><td colspan="{{ meses|length + 3 }}" class="p-1"></td></tr>
 
-                                {# Despesas section #}
+                                {# Despesas section (usando agregados pré-computados) #}
                                 <tr class="table-danger fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-minus-circle"></i> DESPESAS</td>
                                     <td></td>
                                     <td></td>
                                     {% for mes in meses %}
-                                        {% set soma_real = 0 %}
-                                        {% set soma_proj = 0 %}
-                                        {% for g in transacoes_linhas %}
-                                            {% set val = g.monthly.get(mes, 0) | float %}
-                                            {% if val < 0 %}
-                                                {% if g.is_projetada %}
-                                                    {% set soma_proj = soma_proj + (-val) %}
-                                                {% else %}
-                                                    {% set soma_real = soma_real + (-val) %}
-                                                {% endif %}
-                                            {% endif %}
-                                        {% endfor %}
+                                        {% set soma_real = despesas_real_monthly.get(mes, 0) | float %}
+                                        {% set soma_proj = despesas_proj_monthly.get(mes, 0) | float %}
                                         <td class="text-end">
                                             R$ {{ "%.2f"|format(soma_real) }}
                                             {% if soma_proj > 0 %}
@@ -224,28 +191,16 @@
                                             {% endif %}
                                         </td>
                                     {% endfor %}
-                                    {% set total_despesas_real = 0 %}
-                                    {% set total_despesas_proj = 0 %}
-                                    {% for g in transacoes_linhas %}
-                                        {% if g.total|float < 0 %}
-                                            {% if g.is_projetada %}
-                                                {% set total_despesas_proj = total_despesas_proj + (-g.total|float) %}
-                                            {% else %}
-                                                {% set total_despesas_real = total_despesas_real + (-g.total|float) %}
-                                            {% endif %}
-                                        {% endif %}
-                                    {% endfor %}
                                     <td class="text-end bg-danger text-white">
-                                        R$ {{ "%.2f"|format(total_despesas_real) }}
-                                        {% if total_despesas_proj > 0 %}
-                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(total_despesas_proj) }}</span>
+                                        R$ {{ "%.2f"|format(total_despesas_real_calc) }}
+                                        {% if total_despesas_proj_calc > 0 %}
+                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(total_despesas_proj_calc) }}</span>
                                         {% endif %}
                                     </td>
                                 </tr>
 
                                 {# List itemized despesas #}
-                                {% for g in transacoes_linhas %}
-                                    {% if g.total|float < 0 %}
+                                {% for g in despesas_linhas %}
                                     <tr {% if g.is_projetada %}class="table-warning" title="Projetada"{% endif %}>
                                         <td class="sticky-left ps-3 descricao-cell">{{ g.descricao or '-' }}</td>
                                         <td>{{ g.categoria_raiz or '-' }}</td>
@@ -262,51 +217,31 @@
                                         {% endfor %}
                                         <td class="text-end">R$ {{ "%.2f"|format((-g.total)|float) }}</td>
                                     </tr>
-                                    {% endif %}
                                 {% endfor %}
 
                                 <!-- Espaçador -->
                                 <tr><td colspan="{{ meses|length + 3 }}" class="p-1"></td></tr>
 
-                                {# SALDO MENSAL #}
+                                {# SALDO MENSAL (usando mapas de saldo pré-computados) #}
                                 <tr class="table-info fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-equals"></i> SALDO MENSAL</td>
                                     <td></td>
                                     <td></td>
                                     {% for mes in meses %}
-                                        {% set saldo_real = 0 %}
-                                        {% set saldo_proj = 0 %}
-                                        {% for g in transacoes_linhas %}
-                                            {% set val = g.monthly.get(mes, 0) | float %}
-                                            {% if g.is_projetada %}
-                                                {% set saldo_proj = saldo_proj + val %}
-                                            {% else %}
-                                                {% set saldo_real = saldo_real + val %}
-                                            {% endif %}
-                                        {% endfor %}
-                                        {% set saldo_mes = saldo_real %}
-                                        <td class="text-end {% if (saldo_real + saldo_proj) >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {% set saldo_real = saldo_real_monthly.get(mes, 0) | float %}
+                                        {% set saldo_proj = saldo_proj_monthly.get(mes, 0) | float %}
+                                        {% set valor = saldo_real + saldo_proj %}
+                                        <td class="text-end {% if valor >= 0 %}text-success{% else %}text-danger{% endif %}">
                                             R$ {{ "%.2f"|format(saldo_real) }}
                                             {% if saldo_proj != 0 %}
                                                 <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(saldo_proj) }}</span>
                                             {% endif %}
                                         </td>
                                     {% endfor %}
-                                    {% set saldo_total_real = 0 %}
-                                    {% set saldo_total_proj = 0 %}
-                                    {% for g in transacoes_linhas %}
-                                        {% if g.total is defined %}
-                                            {% if g.is_projetada %}
-                                                {% set saldo_total_proj = saldo_total_proj + (g.total|float) %}
-                                            {% else %}
-                                                {% set saldo_total_real = saldo_total_real + (g.total|float) %}
-                                            {% endif %}
-                                        {% endif %}
-                                    {% endfor %}
                                     <td class="text-end bg-info text-white">
-                                        R$ {{ "%.2f"|format(saldo_total_real) }}
-                                        {% if saldo_total_proj != 0 %}
-                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(saldo_total_proj) }}</span>
+                                        R$ {{ "%.2f"|format(saldo_total_real_calc) }}
+                                        {% if saldo_total_proj_calc != 0 %}
+                                            <span class="badge bg-warning text-dark proj-badge">Projetado: R$ {{ "%.2f"|format(saldo_total_proj_calc) }}</span>
                                         {% endif %}
                                     </td>
                                 </tr>

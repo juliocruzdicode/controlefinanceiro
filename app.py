@@ -2315,6 +2315,48 @@ def relatorios():
     except Exception:
         pass
 
+    # --- Pré-computar agregados por seção (receitas / despesas) e saldo mensal ---
+    receitas_real_monthly = {m: 0 for m in meses}
+    receitas_proj_monthly = {m: 0 for m in meses}
+    despesas_real_monthly = {m: 0 for m in meses}
+    despesas_proj_monthly = {m: 0 for m in meses}
+
+    for g in transacoes_linhas:
+        for m in meses:
+            # partir dos mapas mensais já preparados (signed values)
+            try:
+                rv = float(g.get('monthly_real', {}).get(m, 0) or 0)
+                pv = float(g.get('monthly_proj', {}).get(m, 0) or 0)
+            except Exception:
+                rv = 0
+                pv = 0
+
+            # reais
+            if rv > 0:
+                receitas_real_monthly[m] += rv
+            elif rv < 0:
+                despesas_real_monthly[m] += -rv
+
+            # projetadas
+            if pv > 0:
+                receitas_proj_monthly[m] += pv
+            elif pv < 0:
+                despesas_proj_monthly[m] += -pv
+
+    total_receitas_real_calc = sum(receitas_real_monthly.values())
+    total_receitas_proj_calc = sum(receitas_proj_monthly.values())
+    total_despesas_real_calc = sum(despesas_real_monthly.values())
+    total_despesas_proj_calc = sum(despesas_proj_monthly.values())
+
+    saldo_real_monthly = {m: receitas_real_monthly[m] - despesas_real_monthly[m] for m in meses}
+    saldo_proj_monthly = {m: receitas_proj_monthly[m] - despesas_proj_monthly[m] for m in meses}
+    saldo_total_real_calc = total_receitas_real_calc - total_despesas_real_calc
+    saldo_total_proj_calc = total_receitas_proj_calc - total_despesas_proj_calc
+
+    # Separar linhas por tipo para simplificar o template
+    receitas_linhas = [g for g in transacoes_linhas if float(g.get('total', 0)) > 0]
+    despesas_linhas = [g for g in transacoes_linhas if float(g.get('total', 0)) < 0]
+
     return render_template('relatorios.html',
                          anos_disponiveis=anos_disponiveis,
                          ano=ano,
@@ -2334,7 +2376,21 @@ def relatorios():
                          categorias_sub_receitas=categorias_sub_receitas,
                          categorias_sub_despesas=categorias_sub_despesas,
                          matriz_dados=matriz_dados,
-                         transacoes_linhas=transacoes_linhas)
+                         transacoes_linhas=transacoes_linhas,
+                         receitas_real_monthly=receitas_real_monthly,
+                         receitas_proj_monthly=receitas_proj_monthly,
+                         despesas_real_monthly=despesas_real_monthly,
+                         despesas_proj_monthly=despesas_proj_monthly,
+                         saldo_real_monthly=saldo_real_monthly,
+                         saldo_proj_monthly=saldo_proj_monthly,
+                         receitas_linhas=receitas_linhas,
+                         despesas_linhas=despesas_linhas,
+                         total_receitas_real_calc=total_receitas_real_calc,
+                         total_receitas_proj_calc=total_receitas_proj_calc,
+                         total_despesas_real_calc=total_despesas_real_calc,
+                         total_despesas_proj_calc=total_despesas_proj_calc,
+                         saldo_total_real_calc=saldo_total_real_calc,
+                         saldo_total_proj_calc=saldo_total_proj_calc)
 
 @app.route('/api/comparar-contas-ano')
 @login_required
