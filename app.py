@@ -2516,66 +2516,76 @@ def api_comparar_contas_ano():
 @login_required
 def dados_grafico():
     """API para dados dos gráficos"""
-    # Ler filtros opcionais via query params (ano, conta)
-    conta_id = request.args.get('conta')
-    ano = request.args.get('ano')
+    try:
+        # Ler filtros opcionais via query params (ano, conta)
+        conta_id = request.args.get('conta')
+        ano = request.args.get('ano')
 
-    # Base filter por usuário
-    base_filter = [Transacao.user_id == current_user.id]
-    if conta_id:
-        try:
-            conta_id = int(conta_id)
-            base_filter.append(Transacao.conta_id == conta_id)
-        except Exception:
-            pass
-    if ano:
-        try:
-            ano_int = int(ano)
-            base_filter.append(func.strftime('%Y', Transacao.data_transacao) == str(ano_int))
-        except Exception:
-            pass
+        # Base filter por usuário
+        base_filter = [Transacao.user_id == current_user.id]
+        if conta_id:
+            try:
+                conta_id = int(conta_id)
+                base_filter.append(Transacao.conta_id == conta_id)
+            except Exception:
+                pass
+        if ano:
+            try:
+                ano_int = int(ano)
+                base_filter.append(func.strftime('%Y', Transacao.data_transacao) == str(ano_int))
+            except Exception:
+                pass
 
-    # Dados por categoria (filtrados por usuário e opcionalmente por conta/ano)
-    resultado = db.session.query(
-        Categoria.nome,
-        Categoria.cor,
-        func.sum(Transacao.valor)
-    ).join(Transacao).filter(*base_filter).group_by(Categoria.nome, Categoria.cor).all()
-    
-    dados_categoria = {
-    'labels': [r[0] for r in resultado],
-    'data': [float(r[2]) if r[2] is not None else 0.0 for r in resultado],
-    'colors': [r[1] for r in resultado]
-    }
-    
-    # Dados mensais (filtrados por usuário)
-    dados_mensais = db.session.query(
-        func.strftime('%Y-%m', Transacao.data_transacao).label('mes'),
-        Transacao.tipo,
-        func.sum(Transacao.valor)
-    ).filter(*base_filter).group_by('mes', Transacao.tipo).all()
-    
-    # Organizando dados mensais
-    meses = {}
-    for registro in dados_mensais:
-        mes, tipo, valor = registro
-        if mes not in meses:
-            meses[mes] = {'receitas': 0, 'despesas': 0}
-        # valor pode ser None dependendo do banco; tratar como 0.0
-        meses[mes][f'{tipo.value}s'] = float(valor) if valor is not None else 0.0
-    
-    # Garantir ordenação cronológica dos meses
-    meses_ordenados = sorted(meses.keys())
-    dados_tempo = {
-        'labels': meses_ordenados,
-        'receitas': [meses[m]['receitas'] for m in meses_ordenados],
-        'despesas': [meses[m]['despesas'] for m in meses_ordenados]
-    }
-    
-    return jsonify({
-        'categoria': dados_categoria,
-        'tempo': dados_tempo
-    })
+        # Dados por categoria (filtrados por usuário e opcionalmente por conta/ano)
+        resultado = db.session.query(
+            Categoria.nome,
+            Categoria.cor,
+            func.sum(Transacao.valor)
+        ).join(Transacao).filter(*base_filter).group_by(Categoria.nome, Categoria.cor).all()
+        
+        dados_categoria = {
+            'labels': [r[0] for r in resultado],
+            'data': [float(r[2]) if r[2] is not None else 0.0 for r in resultado],
+            'colors': [r[1] for r in resultado]
+        }
+        
+        # Dados mensais (filtrados por usuário)
+        dados_mensais = db.session.query(
+            func.strftime('%Y-%m', Transacao.data_transacao).label('mes'),
+            Transacao.tipo,
+            func.sum(Transacao.valor)
+        ).filter(*base_filter).group_by('mes', Transacao.tipo).all()
+        
+        # Organizando dados mensais
+        meses = {}
+        for registro in dados_mensais:
+            mes, tipo, valor = registro
+            if mes not in meses:
+                meses[mes] = {'receitas': 0, 'despesas': 0}
+            # valor pode ser None dependendo do banco; tratar como 0.0
+            meses[mes][f'{tipo.value}s'] = float(valor) if valor is not None else 0.0
+
+        # Garantir ordenação cronológica dos meses
+        meses_ordenados = sorted(meses.keys())
+        dados_tempo = {
+            'labels': meses_ordenados,
+            'receitas': [meses[m]['receitas'] for m in meses_ordenados],
+            'despesas': [meses[m]['despesas'] for m in meses_ordenados]
+        }
+
+        return jsonify({
+            'categoria': dados_categoria,
+            'tempo': dados_tempo
+        })
+    except Exception as e:
+        # Registrar stacktrace no logger para investigação
+        app.logger.exception('Erro ao gerar dados do gráfico')
+        # Mostrar traceback no JSON apenas em modo debug ou quando explicitamente habilitado
+        show_errors = app.debug or os.environ.get('SHOW_API_ERRORS') == '1'
+        if show_errors:
+            import traceback
+            return jsonify({'success': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+        return jsonify({'success': False, 'error': 'Erro interno ao gerar dados dos gráficos'}), 500
 
 @app.route('/api/categorias-arvore')
 @login_required
