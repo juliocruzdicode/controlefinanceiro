@@ -124,7 +124,7 @@
                                 {% for mes in meses %}
                                 <th class="text-center" style="min-width: 120px;">{{ mes }}</th>
                                 {% endfor %}
-                                <th class="sticky-left descricao-header" style="min-width: 120px;">TotaL</th>
+                                <th class="sticky-left descricao-header" style="min-width: 120px;">Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -186,7 +186,7 @@
                                         </td>
                                     {% endfor %}
                                     {% set total_despesas_comb = (total_despesas_real_calc + total_despesas_proj_calc) %}
-                                    <td class="text-end bg-danger text-white">
+                                    <td class="text-end bg-danger text-muted">
                                         R$ {{ "%.2f"|format(total_despesas_comb) }}
                                     </td>
                                 </tr>
