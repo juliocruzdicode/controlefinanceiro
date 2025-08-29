@@ -151,6 +151,9 @@
     try{
         const res = await fetch('/api/dados-grafico', { credentials: 'same-origin' });
         if(!res.ok){
+            // Mostrar mensagem nas áreas dos gráficos
+            renderChartError('graficoCategoria', 'Erro ao carregar dados (status: ' + res.status + ').');
+            renderChartError('graficoTempo', 'Erro ao carregar dados (status: ' + res.status + ').');
             console.error('Erro ao carregar dados do gráfico:', res.status, res.statusText);
             return;
         }
@@ -158,6 +161,18 @@
         const contentType = res.headers.get('content-type') || '';
         if(!contentType.includes('application/json')){
             const text = await res.text();
+            // Se for um redirect para login, oferecer CTA para entrar
+            if(text && text.includes('/login')){
+                const next = encodeURIComponent(window.location.pathname + window.location.search);
+                const msg = 'Você precisa entrar para ver os gráficos.';
+                renderChartLoginCTA('graficoCategoria', msg, '/login?next=' + next);
+                renderChartLoginCTA('graficoTempo', msg, '/login?next=' + next);
+                console.error('Resposta inesperada (redirect/login) de /api/dados-grafico');
+                return;
+            }
+
+            renderChartError('graficoCategoria', 'Resposta inesperada do servidor.');
+            renderChartError('graficoTempo', 'Resposta inesperada do servidor.');
             console.error('Resposta inesperada (não JSON) de /api/dados-grafico:', text);
             return;
         }
@@ -229,8 +244,50 @@
         }catch(e){ console.error('Erro ao renderizar gráfico de tempo:', e); }
 
     }catch(err){
+        // Em caso de erro de rede/genérico, mostrar mensagem amigável
+        renderChartError('graficoCategoria', 'Não foi possível carregar os gráficos. Verifique sua conexão.');
+        renderChartError('graficoTempo', 'Não foi possível carregar os gráficos. Verifique sua conexão.');
         console.error('Erro ao buscar dados do gráfico:', err);
     }
 })();
+
+// Helper: mostra uma mensagem de erro simples no lugar do canvas
+function renderChartError(canvasId, message){
+    try{
+        const el = document.getElementById(canvasId);
+        if(!el) return;
+        const parent = el.parentElement;
+        if(!parent) return;
+        // Esconder canvas
+        el.style.display = 'none';
+        // Remover aviso anterior se existir
+        const existing = parent.querySelector('.chart-error');
+        if(existing) existing.remove();
+        const div = document.createElement('div');
+        div.className = 'chart-error text-center p-3 text-muted';
+        div.innerHTML = `<div class="fw-bold mb-1">${message}</div>`;
+        parent.appendChild(div);
+    }catch(e){ console.error('renderChartError failed', e); }
+}
+
+// Helper: mostra CTA para login quando a API retornou redirect para /login
+function renderChartLoginCTA(canvasId, message, loginUrl){
+    try{
+        const el = document.getElementById(canvasId);
+        if(!el) return;
+        const parent = el.parentElement;
+        if(!parent) return;
+        el.style.display = 'none';
+        const existing = parent.querySelector('.chart-error');
+        if(existing) existing.remove();
+        const div = document.createElement('div');
+        div.className = 'chart-error text-center p-3';
+        div.innerHTML = `
+            <div class="fw-bold mb-2">${message}</div>
+            <a href="${loginUrl}" class="btn btn-primary btn-sm">Entrar</a>
+        `;
+        parent.appendChild(div);
+    }catch(e){ console.error('renderChartLoginCTA failed', e); }
+}
 </script>
 {% endblock %}
