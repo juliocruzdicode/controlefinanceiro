@@ -87,6 +87,21 @@
                         {% endif %}
                     </div>
 
+                    <div class="mb-3">
+                        {{ form.conta_id.label(class="form-label") }}
+                        <div class="input-group">
+                            {{ form.conta_id(class="form-select" + (" is-invalid" if form.conta_id.errors else "")) }}
+                            <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#modalNovaConta" title="Criar Nova Conta">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        {% if form.conta_id.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.conta_id.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
                     <!-- Forma de Pagamento -->
                     <div class="mb-3">
                         {{ form.forma_pagamento.label(class="form-label") }}
@@ -420,6 +435,108 @@ function updateTagsInput() {
         </div>
     </div>
 </div>
+
+            <!-- Modal Nova Conta -->
+            <div class="modal fade" id="modalNovaConta" tabindex="-1" aria-labelledby="modalNovaContaLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalNovaContaLabel">
+                                <i class="fas fa-plus-circle me-2"></i>Nova Conta
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="formNovaConta">
+                                <div class="mb-3">
+                                    <label for="nomeConta" class="form-label">Nome da Conta</label>
+                                    <input type="text" class="form-control" id="nomeConta" required maxlength="100">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="tipoConta" class="form-label">Tipo de Conta</label>
+                                    <select class="form-select" id="tipoConta">
+                                        <option value="corrente">Corrente</option>
+                                        <option value="poupanca">Poupança</option>
+                                        <option value="cartao_credito">Cartão de Crédito</option>
+                                        <option value="cartao_debito">Cartão de Débito</option>
+                                        <option value="dinheiro">Dinheiro</option>
+                                        <option value="investimento">Investimento</option>
+                                        <option value="outros">Outros</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="saldoInicialConta" class="form-label">Saldo Inicial</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">R$</span>
+                                        <input type="number" class="form-control" id="saldoInicialConta" step="0.01" value="0.00">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="descricaoConta" class="form-label">Descrição (opcional)</label>
+                                    <textarea class="form-control" id="descricaoConta" rows="3" maxlength="200"></textarea>
+                                </div>
+                                <div id="alertConta" class="alert" style="display: none;"></div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-success" onclick="criarConta()">
+                                <i class="fas fa-save me-1"></i>Criar Conta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            // Função para criar nova conta (mesma lógica do formulário de criação)
+            function criarConta() {
+                const nome = document.getElementById('nomeConta').value.trim();
+                const tipo = document.getElementById('tipoConta').value;
+                const saldoInicial = parseFloat(document.getElementById('saldoInicialConta').value) || 0;
+                const descricao = document.getElementById('descricaoConta').value.trim();
+                const alertElement = document.getElementById('alertConta');
+
+                if (!nome) {
+                    showAlert('alertConta', 'Nome da conta é obrigatório!', 'danger');
+                    return;
+                }
+
+                alertElement.style.display = 'none';
+
+                fetch('/api/conta/nova', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        nome: nome,
+                        tipo: tipo,
+                        saldo_inicial: saldoInicial,
+                        descricao: descricao
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const contaSelect = document.querySelector('select[name="conta_id"]');
+                        const newOption = new Option(data.conta.nome, data.conta.id);
+                        contaSelect.add(newOption);
+                        contaSelect.value = data.conta.id;
+
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaConta'));
+                        if (modal) modal.hide();
+                        document.getElementById('formNovaConta').reset();
+                        showToast('Conta criada com sucesso!', 'success');
+                    } else {
+                        showAlert('alertConta', data.message || 'Erro ao criar conta.', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    showAlert('alertConta', 'Erro ao criar conta. Tente novamente.', 'danger');
+                });
+            }
 
 <!-- Modal Nova Tag -->
 <div class="modal fade" id="modalNovaTag" tabindex="-1" aria-labelledby="modalNovaTagLabel" aria-hidden="true">
