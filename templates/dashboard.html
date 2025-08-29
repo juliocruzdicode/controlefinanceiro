@@ -146,67 +146,91 @@
 
 {% block scripts %}
 <script>
-// Carregar dados dos gráficos
-fetch('/api/dados-grafico')
-    .then(response => response.json())
-    .then(data => {
+// Carregar dados dos gráficos (modo resiliente)
+(async function(){
+    try{
+        const res = await fetch('/api/dados-grafico', { credentials: 'same-origin' });
+        if(!res.ok){
+            console.error('Erro ao carregar dados do gráfico:', res.status, res.statusText);
+            return;
+        }
+
+        const contentType = res.headers.get('content-type') || '';
+        if(!contentType.includes('application/json')){
+            const text = await res.text();
+            console.error('Resposta inesperada (não JSON) de /api/dados-grafico:', text);
+            return;
+        }
+
+        const data = await res.json();
+
+        // Validação mínima
+        if(!data || !data.categoria || !data.tempo){
+            console.error('Dados do gráfico incompletos:', data);
+            return;
+        }
+
         // Gráfico de pizza - Gastos por categoria
-        const ctxCategoria = document.getElementById('graficoCategoria').getContext('2d');
-        new Chart(ctxCategoria, {
-            type: 'doughnut',
-            data: {
-                labels: data.categoria.labels,
-                datasets: [{
-                    data: data.categoria.data,
-                    backgroundColor: data.categoria.colors,
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
+        try{
+            const elCategoria = document.getElementById('graficoCategoria');
+            if(elCategoria && elCategoria.getContext){
+                const ctxCategoria = elCategoria.getContext('2d');
+                new Chart(ctxCategoria, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.categoria.labels || [],
+                        datasets: [{
+                            data: data.categoria.data || [],
+                            backgroundColor: data.categoria.colors || [],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
                     }
-                }
+                });
             }
-        });
+        }catch(e){ console.error('Erro ao renderizar gráfico de categorias:', e); }
 
         // Gráfico de linha - Receitas vs Despesas
-        const ctxTempo = document.getElementById('graficoTempo').getContext('2d');
-        new Chart(ctxTempo, {
-            type: 'line',
-            data: {
-                labels: data.tempo.labels,
-                datasets: [{
-                    label: 'Receitas',
-                    data: data.tempo.receitas,
-                    borderColor: '#28a745',
-                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                    tension: 0.4
-                }, {
-                    label: 'Despesas',
-                    data: data.tempo.despesas,
-                    borderColor: '#dc3545',
-                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top'
+        try{
+            const elTempo = document.getElementById('graficoTempo');
+            if(elTempo && elTempo.getContext){
+                const ctxTempo = elTempo.getContext('2d');
+                new Chart(ctxTempo, {
+                    type: 'line',
+                    data: {
+                        labels: data.tempo.labels || [],
+                        datasets: [{
+                            label: 'Receitas',
+                            data: data.tempo.receitas || [],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            tension: 0.4
+                        }, {
+                            label: 'Despesas',
+                            data: data.tempo.despesas || [],
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'top' } },
+                        scales: { y: { beginAtZero: true } }
                     }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
+                });
             }
-        });
-    });
+        }catch(e){ console.error('Erro ao renderizar gráfico de tempo:', e); }
+
+    }catch(err){
+        console.error('Erro ao buscar dados do gráfico:', err);
+    }
+})();
 </script>
 {% endblock %}
