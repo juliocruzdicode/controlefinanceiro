@@ -2541,12 +2541,12 @@ def dados_grafico():
             except Exception:
                 pass
 
-        # Dados por categoria (filtrados por usuário e opcionalmente por conta/ano)
+        # Dados por categoria (apenas despesas)
         resultado = db.session.query(
             Categoria.nome,
             Categoria.cor,
             func.sum(Transacao.valor)
-        ).join(Transacao).filter(*base_filter).group_by(Categoria.nome, Categoria.cor).all()
+        ).join(Transacao).filter(*base_filter, Transacao.tipo == TipoTransacao.DESPESA).group_by(Categoria.nome, Categoria.cor).all()
         
         dados_categoria = {
             'labels': [r[0] for r in resultado],
