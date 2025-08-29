@@ -782,16 +782,19 @@ function exportarExcel() {
 
         const labels = data.months || [{% for m in meses %}'{{ m }}'{% if not loop.last %}, {% endif %}{% endfor %}];
         const accounts = data.accounts || [];
-        // Transform accounts: keep only despesas (negative) and convert to positive numbers for display
-        const expensesOnly = accounts.map(acc => {
-            const monthly = (acc.monthly || []).map(v => (Number(v) < 0 ? Math.abs(Number(v)) : 0));
+        // Process accounts: use absolute monthly net movement so ALL accounts are considered
+        // (this avoids excluding accounts that have positive net months)
+        const accountsProcessed = accounts.map(acc => {
+            const monthly = (acc.monthly || []).map(v => {
+                const n = Number(v) || 0;
+                return Math.abs(n);
+            });
             const total = monthly.reduce((s, x) => s + x, 0);
             return Object.assign({}, acc, { monthly, total });
         });
 
-    // No per-account selection: we always display all accounts (expensesOnly already contains all accounts)
-
-        const datasets = buildDatasets(expensesOnly);
+        // Build datasets from the processed accounts (includes all accounts)
+        const datasets = buildDatasets(accountsProcessed);
 
         if(comparacaoChart) comparacaoChart.destroy();
         comparacaoChart = new Chart(ctxCompar, {
