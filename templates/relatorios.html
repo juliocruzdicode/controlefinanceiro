@@ -124,7 +124,7 @@
                                 {% for mes in meses %}
                                 <th class="text-center" style="min-width: 120px;">{{ mes }}</th>
                                 {% endfor %}
-                                <th class="sticky-left descricao-header" style="min-width: 120px;">TotaLLLl</th>
+                                <th class="sticky-left descricao-header" style="min-width: 120px;">TotaL</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -165,7 +165,8 @@
                                             {% endif %}
                                         </td>
                                         {% endfor %}
-                                        <td class="text-end">R$ {{ "%.2f"|format(g.total|float) }}</td>
+                                        <td class="text-end {% if g.total|float > 0 %}text-success{% elif g.total|float < 0 %}text-danger{% endif %}">
+                                            R$ {{ "%.2f"|format(g.total|float) }}</td>
                                     </tr>
                                 {% endfor %}
 
@@ -207,7 +208,8 @@
                                             {% endif %}
                                         </td>
                                         {% endfor %}
-                                        <td class="text-end">R$ {{ "%.2f"|format((-g.total)|float) }}</td>
+                                        <td class="text-end {% if g.total|float < 0 %}text-danger{% elif g.total|float > 0 %}text-success{% endif %}">
+                                            R$ {{ "%.2f"|format((-g.total)|float) }}</td>
                                     </tr>
                                 {% endfor %}
 
@@ -257,7 +259,8 @@
                                         {% endif %}
                                     </td>
                                     {% endfor %}
-                                        <td class="text-end">{{ format_currency(categoria.total_receita) }}</td>
+                                    <td class="text-end {% if categoria.total_receita|float > 0 %}text-success{% elif categoria.total_receita|float < 0 %}text-danger{% endif %}">
+                                        {{ format_currency(categoria.total_receita) }}</td>
                                 </tr>
                                 {% endfor %}
 
@@ -288,7 +291,7 @@
                                         {% endif %}
                                     </td>
                                     {% endfor %}
-                                    <td class="text-end">
+                                    <td class="text-end {% if (categoria.total_despesa or 0)|float < 0 %}text-danger{% elif (categoria.total_despesa or 0)|float > 0 %}text-success{% endif %}">
                                         {% set total_cat = categoria.total_despesa or 0 %}
                                         {% if total_cat %}
                                         R$ {{ "%.2f"|format(total_cat|float) }}
