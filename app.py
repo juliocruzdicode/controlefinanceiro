@@ -2532,7 +2532,12 @@ def dados_grafico():
         if ano:
             try:
                 ano_int = int(ano)
-                base_filter.append(func.strftime('%Y', Transacao.data_transacao) == str(ano_int))
+                # Ajustar expressão conforme o dialect do banco (SQLite usa strftime, Postgres usa date_part)
+                dialect = db.engine.dialect.name
+                if dialect and dialect.startswith('postgres'):
+                    base_filter.append(func.date_part('year', Transacao.data_transacao) == ano_int)
+                else:
+                    base_filter.append(func.strftime('%Y', Transacao.data_transacao) == str(ano_int))
             except Exception:
                 pass
 
@@ -2550,11 +2555,18 @@ def dados_grafico():
         }
         
         # Dados mensais (filtrados por usuário)
+        # Construir expressão de rótulo do mês compatível com o banco (SQLite x Postgres)
+        dialect = db.engine.dialect.name
+        if dialect and dialect.startswith('postgres'):
+            month_label = func.to_char(Transacao.data_transacao, 'YYYY-MM').label('mes')
+        else:
+            month_label = func.strftime('%Y-%m', Transacao.data_transacao).label('mes')
+
         dados_mensais = db.session.query(
-            func.strftime('%Y-%m', Transacao.data_transacao).label('mes'),
+            month_label,
             Transacao.tipo,
             func.sum(Transacao.valor)
-        ).filter(*base_filter).group_by('mes', Transacao.tipo).all()
+        ).filter(*base_filter).group_by(month_label, Transacao.tipo).all()
         
         # Organizando dados mensais
         meses = {}
