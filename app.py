@@ -2238,8 +2238,15 @@ def relatorios():
                 is_receita = (t.tipo == TipoTransacao.RECEITA)
             except Exception:
                 # fallback: se tipo não estiver disponível, inferir pelo sinal do valor
-                is_receita = (t.valor >= 0)
-            signed_val = (t.valor if is_receita else -t.valor)
+                is_receita = (getattr(t, 'valor', 0) >= 0)
+
+            # Normalizar usando valor absoluto para evitar dupla-negação se dados vierem com sinal
+            raw_val = float(getattr(t, 'valor', 0) or 0)
+            if is_receita:
+                signed_val = abs(raw_val)
+            else:
+                signed_val = -abs(raw_val)
+
             # sempre atualizar o total combinado (receitas positivas, despesas negativas)
             grupos[chave]['monthly'][month_label] += signed_val
             grupos[chave]['total'] += signed_val
@@ -2249,8 +2256,13 @@ def relatorios():
             else:
                 grupos[chave]['monthly_real'][month_label] += signed_val
         else:
-            # valores fora do período somam para o total geral
-            grupos[chave]['total'] += t.valor
+            # valores fora do período somam para o total geral (usar mesma normalização)
+            try:
+                is_receita = (t.tipo == TipoTransacao.RECEITA)
+            except Exception:
+                is_receita = (getattr(t, 'valor', 0) >= 0)
+            raw_val = float(getattr(t, 'valor', 0) or 0)
+            grupos[chave]['total'] += (abs(raw_val) if is_receita else -abs(raw_val))
 
         # se encontrarmos uma transação real (não projetada), preferi-la como label exibido
         if not getattr(t, 'is_projetada', False):
