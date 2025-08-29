@@ -439,8 +439,15 @@ thead th {
 }
 
 /* Ensure section headers (RECEITAS/DESPESAS/SALDO) keep their bold background on first column */
-.table tbody tr.section-header td:first-child {
-    background: transparent; /* section header uses full-row classes like table-success/table-danger */
+.table tbody tr.section-header td:first-child,
+.table tbody tr.section-header th:first-child {
+    background-color: inherit; /* let the section row color (table-success/table-danger/info) apply */
+}
+
+/* Ensure category and subcategory cells do not override row background */
+.table tbody tr.section-header td,
+.table tbody tr.section-header th {
+    background-color: inherit;
 }
 
 .table-responsive {
