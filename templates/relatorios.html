@@ -131,7 +131,7 @@
                             {# Novo: renderizar linhas por transação se disponível #}
                             {% if transacoes_linhas is defined and transacoes_linhas %}
                                 {# Receitas section #}
-                                <tr class="table-success fw-bold">
+                                <tr class="table-success fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-plus-circle"></i> RECEITAS</td>
                                     {% for mes in meses %}
                                         {% set soma = 0 %}
@@ -178,7 +178,7 @@
                                 <tr><td colspan="{{ meses|length + 3 }}" class="p-1"></td></tr>
 
                                 {# Despesas section #}
-                                <tr class="table-danger fw-bold">
+                                <tr class="table-danger fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-minus-circle"></i> DESPESAS</td>
                                     {% for mes in meses %}
                                         {% set soma = 0 %}
@@ -225,7 +225,7 @@
                                 <tr><td colspan="{{ meses|length + 3 }}" class="p-1"></td></tr>
 
                                 {# SALDO MENSAL #}
-                                <tr class="table-info fw-bold">
+                                <tr class="table-info fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-equals"></i> SALDO MENSAL</td>
                                     {% for mes in meses %}
                                         {% set saldo_mes = 0 %}
@@ -246,7 +246,7 @@
                                 {# Fallback: manter agregados por categoria como antes #}
                                 {% if tipo == 'todos' or tipo == 'receita' %}
                                 <!-- Receitas -->
-                                <tr class="table-success fw-bold">
+                                <tr class="table-success fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-plus-circle"></i> RECEITAS</td>
                                     {% for mes in meses %}
                                     <td class="text-end">R$ {{ "%.2f"|format(totais_mensais[mes]['receita']|float) }}</td>
@@ -277,7 +277,7 @@
 
                                 {% if tipo == 'todos' or tipo == 'despesa' %}
                                 <!-- Despesas -->
-                                <tr class="table-danger fw-bold">
+                                <tr class="table-danger fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-minus-circle"></i> DESPESAS</td>
                                     {% for mes in meses %}
                                     <td class="text-end">R$ {{ "%.2f"|format(totais_mensais[mes]['despesa']|float) }}</td>
@@ -315,7 +315,7 @@
 
                                 {% if tipo == 'todos' %}
                                 <!-- SALDO MENSAL -->
-                                <tr class="table-info fw-bold">
+                                <tr class="table-info fw-bold section-header">
                                     <td class="sticky-left"><i class="fas fa-equals"></i> SALDO MENSAL</td>
                                     {% for mes in meses %}
                                     {% set saldo_mes = (totais_mensais[mes]['receita']|float) - (totais_mensais[mes]['despesa']|float) %}
@@ -436,6 +436,23 @@ thead th {
     overflow-x: auto;
     overflow-y: auto;
 }
+
+/* Section headers like RECEITAS / DESPESAS / SALDO */
+.section-header td:first-child {
+    font-size: 1.05rem;
+    padding-left: 1rem;
+}
+.section-header i {
+    margin-right: 0.5rem;
+    font-size: 1.05rem;
+}
+
+/* Totals styling to stand out */
+.table td.bg-success, .table td.bg-danger, .table td.bg-info {
+    font-weight: 700;
+}
+
+.descricao-cell { padding-left: 0.75rem; }
 
 .table th, .table td {
     white-space: nowrap;
